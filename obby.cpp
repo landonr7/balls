@@ -132,8 +132,23 @@ namespace creator {
 	}
 }
 
-//std::list<b2BodyId> plinkoObby(x location you want it to start, y location you want it to start, bodt list) {}
-// Add a function for each obby plinko works tho (lines 184 - 196)
+// x location you want it to start, y location you want it to start, bodt list
+void plinkoObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
+	// Plinko obby
+	// One row of plinko
+	for (int i = 0; i < 5; i++) {
+		// Offset rows five times
+		for (int j = 0; j < 5; j++) {
+
+			if (j % 2 == 0) {
+				obbies.emplace_back(creator::createObby(worldId, (i * 107.5), (j * 100) + y, 28, 28, b2_staticBody));
+			} else {
+				obbies.emplace_back(creator::createObby(worldId, (i * 107.5) + 53.75, (j * 100) + y, 28, 28, b2_staticBody));
+			}
+		}
+	}
+
+}
 
 void displayWorld(b2WorldId world, std::list<b2BodyId> bodies, sf::RenderWindow& render) {
 	b2World_Step(world, 1.0 / 60, 4);
@@ -181,19 +196,9 @@ int main() {
 	// Right wall box
 	bodies.emplace_back(creator::createBox(worldId, 430, 0, 2, 942 * 2, b2_staticBody));
 
-	// Plinko obby
-	// One row of plinko
-	for (int i = 0; i < 5; i++) {
-		// Offset rows five times
-		for (int j = 0; j < 5; j++) {
 
-			if (j % 2 == 0) {
-				bodies.emplace_back(creator::createObby(worldId, (i * 107.5), j * 100, 28, 28, b2_staticBody));
-			} else {
-				bodies.emplace_back(creator::createObby(worldId, (i * 107.5) + 53.75, j * 100, 28, 28, b2_staticBody));
-			}
-		}
-	}
+	//Plinko obby
+	plinkoObby(200, worldId, bodies);
 
 	// Main loop
 	while (window.isOpen()) {
