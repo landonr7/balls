@@ -2,6 +2,9 @@
 #include <box2d/box2d.h>
 #include <iostream>
 #include <list>
+#include <random>
+#include <algorithm>
+#include <vector>
 
 namespace converter {
 	constexpr double PIXELS_PER_METERS = 30.0;
@@ -196,9 +199,55 @@ int main() {
 	// Right wall box
 	bodies.emplace_back(creator::createBox(worldId, 430, 0, 2, 942 * 2, b2_staticBody));
 
+	// Give first obby a starting height
+	int height = 300;
 
-	//Plinko obby
-	plinkoObby(200, worldId, bodies);
+	//Create an array of numbers
+	std::vector<int> rand_nums = {0, 1, 2, 3, 4, 5};
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	//Shuffle them
+	std::shuffle(rand_nums.begin(), rand_nums.end(), gen);
+
+	// Generate 6 obbies
+	for (int i = 0; i < 6; i++) {
+
+		// Obby is asssigned in random order
+		int obby_num = rand_nums[i];
+
+		std::cout << "obby_num = " << obby_num << std::endl;
+
+		switch (obby_num) {
+			case 0:
+				//Plinko obby
+				// IF 0 IS GENERATED TOWARD THE END IT IS JUST FAR DOWN... THE CODE WORKS
+ 				plinkoObby(height, worldId, bodies);
+				break;
+			case 1:
+				// Another obby
+				break;
+			case 2:
+				//Another obby
+				break;
+			case 3:
+				//Another obby
+				break;
+			case 4:
+				//Another obby
+				break;
+			case 5:
+				//Another obby
+				break;
+			default:
+				std::cout << "cry" << std::endl;
+		}
+
+
+		// Add height for subsequent obby
+		height += 500;
+
+	}
+
 
 	// Main loop
 	while (window.isOpen()) {
