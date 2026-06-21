@@ -57,7 +57,7 @@ namespace creator {
 	}
 
 
-	b2BodyId createPlinkoPeg (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type = b2_dynamicBody) {
+	b2BodyId createObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type = b2_dynamicBody) {
 
 		// Define a body
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -96,46 +96,7 @@ namespace creator {
 		return bodyId;
 	}
 
-	b2BodyId createMagicCircle (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type = b2_dynamicBody) {
-
-		// Define a body
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
-
-		// Define a circle
-		b2Circle circle;
-		circle.center = (b2Vec2){0.0f, 0.0f};
-		circle.radius = converter::pixelsToMeters<float>(radius);
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-
-		// Create a body
-		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
-		b2Body_SetType(bodyId, type);
-
-		// Create a circle
-		b2ShapeId shapeId = b2CreateCircleShape(bodyId, &shapeDef, &circle);
-		b2Shape_SetDensity(shapeId, 1.0f, 1);
-		b2Shape_SetFriction(shapeId, 0.3f);
-
-		// Create SFML shape
-		sf::CircleShape* shape = new sf::CircleShape(radius);
-		shape->setOrigin({radius, radius});
-		shape->setPosition({pos_x, pos_y});
-		shape->setPointCount(100);
-
-		if (type == b2_dynamicBody) {
-			shape->setFillColor(sf::Color::Red);
-		} else {
-			shape->setFillColor(sf::Color::White);
-		}
-
-		b2Body_SetUserData(bodyId, shape);
-
-		return bodyId;
-
-	}
-
-	b2BodyId createPlayer (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type = b2_dynamicBody) {
+	b2BodyId createCircle (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type = b2_dynamicBody) {
 
 		// Define a body
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -174,7 +135,7 @@ namespace creator {
 	}
 }
 
-//Creates plinko obby
+// x location you want it to start, y location you want it to start, bodt list
 void plinkoObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
 	// Plinko obby
 	// One row of plinko
@@ -183,23 +144,14 @@ void plinkoObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
 		for (int j = 0; j < 5; j++) {
 
 			if (j % 2 == 0) {
-				obbies.emplace_back(creator::createPlinkoPeg(worldId, (i * 107.5), (j * 100) + y, 28, 28, b2_staticBody));
+				obbies.emplace_back(creator::createObby(worldId, (i * 107.5), (j * 100) + y, 28, 28, b2_staticBody));
 			} else {
-				obbies.emplace_back(creator::createPlinkoPeg(worldId, (i * 107.5) + 53.75, (j * 100) + y, 28, 28, b2_staticBody));
+				obbies.emplace_back(creator::createObby(worldId, (i * 107.5) + 53.75, (j * 100) + y, 28, 28, b2_staticBody));
 			}
 		}
 	}
 
 }
-
-void circleSphereObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
-	obbies.emplace_back(creator::createMagicCircle(worldId, 100, 100, 20, b2_staticBody));
-	//YOU LEFT OFF TRYING TO FIGURE OUT HOW THE FUCK TO LISTEN FOR COLLISONS
-	// YOU WANT A CIRCEL TO DISAPPEAR IF IT TOUCHES A PLAYER
-	// MAYBE BUILD COLLISION LISTNER OR SOMETHING IDK
-
-}
-
 
 void displayWorld(b2WorldId world, std::list<b2BodyId> bodies, sf::RenderWindow& render) {
 	b2World_Step(world, 1.0 / 60, 4);
@@ -238,6 +190,7 @@ int main() {
 	worldDef.gravity = gravity;
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
+
 	std::list<b2BodyId> bodies;
 	// Ground box
 	bodies.emplace_back(creator::createBox(worldId, 400, 942, 800, 20, b2_staticBody));
@@ -246,8 +199,54 @@ int main() {
 	// Right wall box
 	bodies.emplace_back(creator::createBox(worldId, 430, 0, 2, 942 * 2, b2_staticBody));
 
-	//plinkoObby(300, worldId, bodies);
-	circleSphereObby(300, worldId, bodies);
+	// Give first obby a starting height
+	int height = 300;
+
+	//Create an array of numbers
+	std::vector<int> rand_nums = {0, 1, 2, 3, 4, 5};
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	//Shuffle them
+	std::shuffle(rand_nums.begin(), rand_nums.end(), gen);
+
+	// Generate 6 obbies
+	for (int i = 0; i < 6; i++) {
+
+		// Obby is asssigned in random order
+		int obby_num = rand_nums[i];
+
+		std::cout << "obby_num = " << obby_num << std::endl;
+
+		switch (obby_num) {
+			case 0:
+				//Plinko obby
+				// IF 0 IS GENERATED TOWARD THE END IT IS JUST FAR DOWN... THE CODE WORKS
+ 				plinkoObby(height, worldId, bodies);
+				break;
+			case 1:
+				// Another obby
+				break;
+			case 2:
+				//Another obby
+				break;
+			case 3:
+				//Another obby
+				break;
+			case 4:
+				//Another obby
+				break;
+			case 5:
+				//Another obby
+				break;
+			default:
+				std::cout << "cry" << std::endl;
+		}
+
+
+		// Add height for subsequent obby
+		height += 500;
+
+	}
 
 
 	// Main loop
@@ -261,7 +260,7 @@ int main() {
 				if (mouseButtonPressed->button == sf::Mouse::Button::Left) {
 					int x = mouseButtonPressed->position.x;
 					int y = mouseButtonPressed->position.y;
-					bodies.emplace_back(creator::createPlayer(worldId, x, y, 30));
+					bodies.emplace_back(creator::createCircle(worldId, x, y, 30));
 				}
 			}
 
