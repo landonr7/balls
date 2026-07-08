@@ -10,6 +10,12 @@
 const int WINDOW_WIDTH = 215;
 const int WINDOW_HEIGHT = 466;
 
+// Plinko Obby Size
+const int PLINKO_SIZE = 14;
+
+// Ball Size
+const int BALL_SIZE = 15;
+
 namespace converter {
 	constexpr double PIXELS_PER_METERS = 30.0;
 	constexpr double PI = 3.14159;
@@ -148,9 +154,21 @@ void plinkoObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
 		for (int j = 0; j < 5; j++) {
 
 			if (j % 2 == 0) {
-				obbies.emplace_back(creator::createObby(worldId, (i * 107.5), (j * 100) + y, 14, 14, b2_staticBody));
+				obbies.emplace_back(creator::createObby(
+					worldId,
+					(i * (WINDOW_WIDTH / 4)),
+					(j * 100) + y,
+					PLINKO_SIZE,
+					PLINKO_SIZE,
+					b2_staticBody));
 			} else {
-				obbies.emplace_back(creator::createObby(worldId, (i * 107.5) + 53.75, (j * 100) + y, 14, 14, b2_staticBody));
+				obbies.emplace_back(creator::createObby(
+					worldId,
+					(i * (WINDOW_WIDTH / 4)) + (WINDOW_WIDTH / 8),
+					(j * 100) + y,
+					PLINKO_SIZE,
+					PLINKO_SIZE,
+					b2_staticBody));
 			}
 		}
 	}
@@ -276,11 +294,16 @@ int main() {
 			if (event->is<sf::Event::Closed>()) {
 				window.close();
 			}
+			if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+				if (keyPressed->code == sf::Keyboard::Key::Escape) {
+					window.close();
+				}
+			}
 			else if (const auto* mouseButtonPressed = event->getIf<sf::Event::MouseButtonPressed>()) {
 				if (mouseButtonPressed->button == sf::Mouse::Button::Left) {
 					int x = mouseButtonPressed->position.x;
 					int y = mouseButtonPressed->position.y;
-					bodies.emplace_back(creator::createCircle(worldId, x, y, 30));
+					bodies.emplace_back(creator::createCircle(worldId, x, y, BALL_SIZE));
 				}
 			}
 
