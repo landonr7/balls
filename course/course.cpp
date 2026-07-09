@@ -11,10 +11,10 @@ const int WINDOW_WIDTH = 215;
 const int WINDOW_HEIGHT = 466;
 
 // Plinko Obby Size
-const int PLINKO_SIZE = 14;
+const int PLINKO_SIZE = 22;
 
 // Ball Size
-const int BALL_SIZE = 15;
+const int BALL_SIZE = 18;
 
 namespace converter {
 	constexpr double PIXELS_PER_METERS = 30.0;
@@ -149,23 +149,24 @@ namespace creator {
 void plinkoObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
 	// Plinko obby
 	// One row of plinko
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 3; i++) {
 		// Offset rows five times
-		for (int j = 0; j < 5; j++) {
+		for (int j = 0; j < 7; j++) {
 
 			if (j % 2 == 0) {
 				obbies.emplace_back(creator::createObby(
 					worldId,
-					(i * (WINDOW_WIDTH / 4)),
-					(j * 100) + y,
+					(i * (WINDOW_WIDTH / 2)),
+					(j * 42) + y,
 					PLINKO_SIZE,
 					PLINKO_SIZE,
 					b2_staticBody));
 			} else {
+
 				obbies.emplace_back(creator::createObby(
 					worldId,
-					(i * (WINDOW_WIDTH / 4)) + (WINDOW_WIDTH / 8),
-					(j * 100) + y,
+					(i * (WINDOW_WIDTH / 2)) + (WINDOW_WIDTH / 4),
+					(j * 42) + y,
 					PLINKO_SIZE,
 					PLINKO_SIZE,
 					b2_staticBody));
@@ -238,24 +239,25 @@ int main() {
 	bodies.emplace_back(creator::createBox(worldId, WINDOW_WIDTH, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
 
 	// Give first obby a starting height
-	int height = 300;
+	int height = 100;
 
 	//Create an array of numbers
-	std::vector<int> rand_nums = {0, 1, 2, 3, 4, 5};
+	std::vector<int> randNums = {0, 1, 2, 3, 4, 5};
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	//Shuffle them
-	std::shuffle(rand_nums.begin(), rand_nums.end(), gen);
+	std::shuffle(randNums.begin(), randNums.end(), gen);
 
 	// Generate 6 obbies
 	for (int i = 0; i < 6; i++) {
 
 		// Obby is asssigned in random order
-		int obby_num = rand_nums[i];
+		//int obbyNum = randNums[i];
+		int obbyNum = 0;
 
-		std::cout << "obby_num = " << obby_num << std::endl;
+		std::cout << "obbyNum = " << obbyNum << std::endl;
 
-		switch (obby_num) {
+		switch (obbyNum) {
 			case 0:
 				//Plinko obby
 				// IF 0 IS GENERATED TOWARD THE END IT IS JUST FAR DOWN... THE CODE WORKS

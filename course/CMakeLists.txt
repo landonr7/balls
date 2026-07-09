@@ -45,7 +45,7 @@ target_link_libraries(course PRIVATE
 add_custom_command(
 	TARGET course
 	POST_BUILD
-	COMMAND course
+	COMMAND $<TARGET_FILE:course>
 	COMMENT "Executing after building..."
 	VERBATIM
 )
