@@ -1,6 +1,7 @@
 #
-# To edit CMakeLists.txt after modifying, run `cmake -S . -B build --fresh`.
-# Then, recompile the project with `cmake --build build`.
+# To edit CMakeLists.txt after modifying, run `cmake -S . -B build --fresh`,
+# build the project with `cmake --build build`,
+# and lastly, execute the program with ./build/obby
 #
 cmake_minimum_required(VERSION 3.15)
 project(obby C CXX)
@@ -42,10 +43,10 @@ target_link_libraries(obby PRIVATE
 	box2d
 )
 
-add_custom_command(
-	TARGET obby
-	POST_BUILD
-	COMMAND $<TARGET_FILE:obby>
-	COMMENT "Executing after building..."
-	VERBATIM
-)
+#add_custom_command(
+#	TARGET obby
+#	POST_BUILD
+#	COMMAND obby
+#	COMMENT "Executing after building..."
+#	VERBATIM
+#)

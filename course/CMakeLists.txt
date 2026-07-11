@@ -1,6 +1,7 @@
 #
-# To edit CMakeLists.txt after modifying, run `cmake -S . -B build --fresh`.
-# Then, recompile the project with `cmake --build build`.
+# To edit CMakeLists.txt after modifying, run `cmake -S . -B build --fresh`,
+# build the project with `cmake --build build`,
+# and lastly, run ./build/course
 #
 cmake_minimum_required(VERSION 3.15)
 project(course C CXX)
@@ -42,10 +43,10 @@ target_link_libraries(course PRIVATE
 	box2d
 )
 
-add_custom_command(
-	TARGET course
-	POST_BUILD
-	COMMAND $<TARGET_FILE:course>
-	COMMENT "Executing after building..."
-	VERBATIM
-)
+#add_custom_command(
+#	TARGET course
+#	POST_BUILD
+#	COMMAND $<TARGET_FILE:course>
+#	COMMENT "Executing after building..."
+#	VERBATIM
+#)

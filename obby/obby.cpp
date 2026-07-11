@@ -71,6 +71,47 @@ namespace creator {
 		return bodyId;
 	}
 
+	b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type) {
+
+		// Define a body
+		b2BodyDef bodyDef = b2DefaultBodyDef();
+		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+
+		// Define a circle
+		b2Circle circle;
+		circle.center = (b2Vec2){0.0f, 0.0f};
+		circle.radius = converter::pixelsToMeters<float>(radius);
+		b2ShapeDef shapeDef = b2DefaultShapeDef();
+
+		// Create a body
+		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
+		b2Body_SetType(bodyId, type);
+
+		// Create a circle
+		b2ShapeId shapeId = b2CreateCircleShape(bodyId, &shapeDef, &circle);
+		b2Shape_SetDensity(shapeId, 1.0f, 1);
+		b2Shape_SetFriction(shapeId, 0.3f);
+
+		// Give each ball a random linear velocity
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_real_distribution<float> dist(-1.0, 1.0);
+		float randVelocity = dist(gen);
+		std::cout << "random number: " << randVelocity << std::endl;
+		b2Body_SetLinearVelocity(bodyId, (b2Vec2){(float)randVelocity, 0.0f});
+
+		// Create SFML shape
+		sf::CircleShape* shape = new sf::CircleShape(radius);
+		shape->setOrigin({radius, radius});
+		shape->setPosition({pos_x, pos_y});
+		shape->setPointCount(100);
+
+		shape->setFillColor(sf::Color::Red);
+
+		b2Body_SetUserData(bodyId, shape);
+
+		return bodyId;
+	}
 
 	// Creating Shifter Obby
 	b2BodyId createShifterObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
@@ -93,13 +134,8 @@ namespace creator {
 		b2Shape_SetDensity(shapeId, 1.0f, 1);
 		b2Shape_SetFriction(shapeId, 0.3f);
 
-		std::cout << "Body's x position: " << converter::metersToPixels(b2Body_GetPosition(bodyId).x) << std::endl;
-
-		if (b2Body_GetPosition(bodyId).x <= 1.8) {
-			b2Body_SetLinearVelocity(bodyId, (b2Vec2){1.0f, 0.0f});
-		} else {
-			b2Body_SetLinearVelocity(bodyId, (b2Vec2){-1.0f, 0.0f});
-		}
+		//std::cout << "Body's x position: " << converter::metersToPixels(b2Body_GetPosition(bodyId).x) << std::endl;
+		b2Body_SetLinearVelocity(bodyId, (b2Vec2){1.0f, 0.0f});
 
 		// Create SFML shape
 		sf::RectangleShape* shape = new sf::RectangleShape({size_x, size_y});
@@ -159,86 +195,55 @@ namespace creator {
 
 		return bodyId;
 	}
+}
 
-	b2BodyId createCircle (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type) {
+void shifterObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies, std::list<b2BodyId> &shifters) {
 
-		// Define a body
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+	for (int i = 0; i <= 4; i++) {
 
-		// Define a circle
-		b2Circle circle;
-		circle.center = (b2Vec2){0.0f, 0.0f};
-		circle.radius = converter::pixelsToMeters<float>(radius);
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		b2BodyId shifter = creator::createShifterObby(
+			worldId,
+			i * 55,
+			(i * 60) + y,
+			SHIFTER_SIZE * 4,
+			SHIFTER_SIZE,
+			b2_kinematicBody);
 
-		// Create a body
-		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
-		b2Body_SetType(bodyId, type);
-
-		// Create a circle
-		b2ShapeId shapeId = b2CreateCircleShape(bodyId, &shapeDef, &circle);
-		b2Shape_SetDensity(shapeId, 1.0f, 1);
-		b2Shape_SetFriction(shapeId, 0.3f);
-
-		// Create SFML shape
-		sf::CircleShape* shape = new sf::CircleShape(radius);
-		shape->setOrigin({radius, radius});
-		shape->setPosition({pos_x, pos_y});
-		shape->setPointCount(100);
-
-		if (type == b2_dynamicBody) {
-			shape->setFillColor(sf::Color::Red);
-		} else {
-			shape->setFillColor(sf::Color::White);
-		}
-
-		b2Body_SetUserData(bodyId, shape);
-
-		return bodyId;
+		obbies.push_back(shifter);
+		shifters.push_back(shifter);
 	}
 }
 
-// x location you want it to start, y location you want it to start, bodt list
-void shifterObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies) {
-	// Shifter obby
-	obbies.emplace_back(creator::createShifterObby(
-		worldId,
-		55,
-		y,
-		SHIFTER_SIZE * 5,
-		SHIFTER_SIZE,
-		b2_kinematicBody));
-
-	//std::cout << "Horse's position: " << b2Body_GetPosition(horse).x << std::endl;
+void ballsInit(const std::list<b2BodyId> &balls) {
 
 /*
-	// One row of plinko
-	for (int i = 0; i < 3; i++) {
-		// Offset rows five times
-		for (int j = 0; j < 7; j++) {
+	for (int i = 0; i <= 4; i++) {
 
-			if (j % 2 == 0) {
-				obbies.emplace_back(creator::createObby(
-					worldId,
-					(i * (WINDOW_WIDTH / 2)),
-					(j * 42) + y,
-					PLINKO_SIZE,
-					PLINKO_SIZE,
-					b2_staticBody));
-			} else {
+		b2BodyId ball = creator::createBall(
+			worldId,
+			(i * 5),
+			,
+			BALL_SIZE,
+			b2_dynamicBody);
 
-				obbies.emplace_back(creator::createObby(
-					worldId,
-					(i * (WINDOW_WIDTH / 2)) + (WINDOW_WIDTH / 4),
-					(j * 42) + y,
-					PLINKO_SIZE,
-					PLINKO_SIZE,
-					b2_staticBody));
-			}
-		}
+		obbies.push_back(shifter);
+		shifters.push_back(shifter);
 	}
 */
+}
+
+void updateShifters(const std::list<b2BodyId> &shifters) {
+
+	for (const auto& shifter: shifters) {
+
+		float x = converter::metersToPixels(b2Body_GetPosition(shifter).x);
+		//std::cout << "Body's x position: " << x << std::endl;
+
+		if (x <= 55)
+			b2Body_SetLinearVelocity(shifter, (b2Vec2){1.0f, 0.0f});
+		else if (x >= 160)
+			b2Body_SetLinearVelocity(shifter, (b2Vec2){-1.0f, 0.0f});
+	}
 }
 
 void displayWorld(b2WorldId world, std::list<b2BodyId> bodies, sf::RenderWindow& render) {
@@ -281,11 +286,11 @@ int main() {
 	window.setPosition(window_pos);
 
 	// Load sprite
-	const sf::Texture texture("assets/images/cute_guy.jpeg");
+	const sf::Texture texture("build/assets/images/cute_guy.jpeg");
 	sf::Sprite sprite(texture);
 
 	// Create graphical text to display
-	const sf::Font font("assets/fonts/papyrus.ttf");
+	const sf::Font font("build/assets/fonts/papyrus.ttf");
 	sf::Text text(font, "Hi, everyone!", 50);
 
 	// Box2d World
@@ -294,19 +299,40 @@ int main() {
 	worldDef.gravity = gravity;
 	b2WorldId worldId = b2CreateWorld(&worldDef);
 
-
+	// List that holds all bodies in the world
 	std::list<b2BodyId> bodies;
+
+	// List that holds all balls in the world
+	std::list<b2BodyId> balls;
+
+	// List that holds all shifters in the world
+	std::list<b2BodyId> shifters;
+
 	// Ground box
-	bodies.emplace_back(creator::createBox(worldId, WINDOW_WIDTH - 30, WINDOW_HEIGHT, 800, 20, b2_staticBody));
+	bodies.push_back(creator::createBox(worldId, WINDOW_WIDTH - 30, WINDOW_HEIGHT, 800, 20, b2_staticBody));
 	// Left wall box
-	bodies.emplace_back(creator::createBox(worldId, 0, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
+	bodies.push_back(creator::createBox(worldId, 0, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
 	// Right wall box
-	bodies.emplace_back(creator::createBox(worldId, WINDOW_WIDTH, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
+	bodies.push_back(creator::createBox(worldId, WINDOW_WIDTH, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
+
+	// Creating balls
+	//ballsInit(10, worldId, bodies, balls);
+
+	for (int i = 0; i <= 4; i++) {
+		b2BodyId ball = creator::createBall(
+			worldId,
+			WINDOW_WIDTH / 2,
+			20,
+			BALL_SIZE,
+			b2_dynamicBody);
+
+		bodies.push_back(ball);
+	}
+	//shifters.push_back(shifter);
 
 
 	// Creating shifter obby
-	shifterObby(300, worldId, bodies);
-
+	shifterObby(150, worldId, bodies, shifters);
 /*
 	// Generate 6 obbies
 	for (int i = 0; i < 6; i++) {
@@ -365,14 +391,17 @@ int main() {
 				if (mouseButtonPressed->button == sf::Mouse::Button::Left) {
 					int x = mouseButtonPressed->position.x;
 					int y = mouseButtonPressed->position.y;
-					bodies.emplace_back(creator::createCircle(worldId, x, y, BALL_SIZE, b2_dynamicBody));
+					bodies.push_back(creator::createBall(worldId, x, y, BALL_SIZE, b2_dynamicBody));
 				}
 			}
 
 		}
 
+		// Continuously update the physical world frame by frame
 		displayWorld(worldId, bodies, window);
 
+		// Update the movement of the shifter obbies
+		updateShifters(shifters);
 	}
 
 	for (b2BodyId body : bodies) {
