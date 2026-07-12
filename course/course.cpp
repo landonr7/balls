@@ -7,7 +7,7 @@
 #include <vector>
 
 // Obby Number
-const int OBBY_NUM = 0;
+const int OBBY_NUM = 1;
 
 // Screen Resolution
 const int WINDOW_WIDTH = 215;
