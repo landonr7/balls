@@ -22,6 +22,12 @@ const int SHIFTER_SIZE = 22;
 // Ball Size
 const int BALL_SIZE = 18;
 
+/****************************************************************
+* Name: converter						*
+* Parameters: N/A						*
+* Purpose: To convert pixels to meters, meters to pixels,	*
+* radians to degrees, or degrees to radians			*
+****************************************************************/
 namespace converter {
 	constexpr double PIXELS_PER_METERS = 30.0;
 	constexpr double PI = 3.14159;
@@ -36,8 +42,23 @@ namespace converter {
 
 }
 
+/********************************************************
+* Name: creator						*
+* Parameters: N/A					*
+* Purpose: To be the holy one to create all aspects of	*
+* the world						*
+********************************************************/
 namespace creator {
-	b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type = b2_dynamicBody) {
+
+
+	/*********************************************************
+	* Name: createBox					 *
+	* Parameters: Physical world, initial x position, initial*
+	* y position, box width, box height, body type		 *
+	* Purpose: To create a box body and shape in the physical*
+	* world.						 *
+	*********************************************************/
+	b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
 
 		// Define a body
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -72,7 +93,13 @@ namespace creator {
 		return bodyId;
 	}
 
-	b2BodyId createPlinkoObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type = b2_dynamicBody) {
+	/*********************************************************
+	* Name: createPlinkoObby				 *
+	* Parameters: Physical world, initial x position, initial*
+	* y position, plinko width, plinko height, body type*	 *
+	* Purpose: To spawn in a single plinko peg.		 *
+	*********************************************************/
+	b2BodyId createPlinkoObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
 
 		// Define a body
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -111,6 +138,12 @@ namespace creator {
 		return bodyId;
 	}
 
+	/*********************************************************
+	* Name: createBall					 *
+	* Parameters: Physical world, initial x position, initial*
+	* y position, ball radius, body type			 *
+	* Purpose: To spawn in a single ball "player".		 *
+	*********************************************************/
 	b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type) {
 
 		// Define a body
@@ -137,7 +170,6 @@ namespace creator {
 		std::mt19937 gen(rd());
 		std::uniform_real_distribution<float> dist(-1.0, 1.0);
 		float randVelocity = dist(gen);
-		std::cout << "random number: " << randVelocity << std::endl;
 		b2Body_SetLinearVelocity(bodyId, (b2Vec2){(float)randVelocity, 0.0f});
 
 		// Create SFML shape
@@ -153,7 +185,12 @@ namespace creator {
 		return bodyId;
 	}
 
-	// Creating Shifter Obby
+	/*********************************************************
+	* Name: createShifterObby				 *
+	* Parameters: Physical world, initial x position, initial*
+	* y position, shifter width, shifter height, body type	 *
+	* Purpose: To spawn in a single shifter obstacle.	 *
+	*********************************************************/
 	b2BodyId createShifterObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
 
 		// Define a body
@@ -198,7 +235,12 @@ namespace creator {
 
 }
 
-
+/*********************************************************
+* Name: worldInit					 *
+* Parameters: Physical world, list of all physical bodies*
+* Purpose: To spawn in the bounds of the playable world	 *
+* (ground box, and wall boxes).				 *
+*********************************************************/
 void worldInit(b2WorldId &world, std::list<b2BodyId> &bodies) {
 
 	// Ground box
@@ -210,6 +252,13 @@ void worldInit(b2WorldId &world, std::list<b2BodyId> &bodies) {
 
 }
 
+
+/********************************************************
+* Name: ballsInit				 	*
+* Parameters: Physical world, all bodies in the world,	*
+* and balls list					*
+* Purpose: To spawn in all ball players.		*
+*********************************************************/
 void ballsInit(b2WorldId &world, std::list<b2BodyId> &bodies, std::list<b2BodyId> &balls) {
 
 
@@ -227,17 +276,22 @@ void ballsInit(b2WorldId &world, std::list<b2BodyId> &bodies, std::list<b2BodyId
 }
 
 
-
+/********************************************************
+* Name: plinkoObby				 	*
+* Parameters: Physical world, all bodies in the world,	*
+* and plinkoes list					*
+* Purpose: To spawn in the plinko set.			*
+*********************************************************/
 void plinkoObby(int y, b2WorldId& world, std::list<b2BodyId> &obbies, std::list<b2BodyId> &plinkoes) {
-	// Plinko obby
 
 	float plinkoPos = 0;
 
 	// One row of plinko
 	for (int i = 0; i < 3; i++) {
-		// Offset rows five times
+		// One column of plinko
 		for (int j = 0; j < 7; j++) {
 
+			// Offset alternate rows
 			if (j % 2 == 0)
 				plinkoPos = i * (WINDOW_WIDTH / 2);
 			else
@@ -258,8 +312,16 @@ void plinkoObby(int y, b2WorldId& world, std::list<b2BodyId> &obbies, std::list<
 
 }
 
+
+/********************************************************
+* Name: shifterObby				 	*
+* Parameters: Physical world, all bodies in the world,	*
+* and shifters list					*
+* Purpose: To spawn in all shifter obbies.		*
+*********************************************************/
 void shifterObby(int y, b2WorldId& world, std::list<b2BodyId> &obbies, std::list<b2BodyId> &shifters) {
 
+	// Spawn 4 shifter bars
 	for (int i = 0; i <= 4; i++) {
 
 		b2BodyId shifter = creator::createShifterObby(
@@ -275,6 +337,13 @@ void shifterObby(int y, b2WorldId& world, std::list<b2BodyId> &obbies, std::list
 	}
 }
 
+
+/****************************************
+* Name: updateShifters			*
+* Parameters: List of shifters		*
+* Purpose: To change velocty of shifter *
+* depending on position.		*
+****************************************/
 void updateShifters(std::list<b2BodyId> &shifters) {
 
 	for (const auto& shifter: shifters) {
@@ -289,6 +358,12 @@ void updateShifters(std::list<b2BodyId> &shifters) {
 	}
 }
 
+
+/********************************************************
+* Name: leadBall					*
+* Parameters: List of balls				*
+* Purpose: To store the y value of the ball in the lead.*
+*********************************************************/
 float leadBall(const std::list<b2BodyId> &balls) {
 
 	float leadY = 0;
@@ -304,6 +379,15 @@ float leadBall(const std::list<b2BodyId> &balls) {
 	return leadY - (WINDOW_HEIGHT * 2 / 3);
 }
 
+
+/*********************************************************
+* Name: displayWorld					 *
+* Parameters: Physical world, all bodies in the world,	 *
+* the application window, and balls list		 *
+* Purpose: To display the application window, run physics*
+* simulation over time, and attach physical position to  *
+* window position.					 *
+*********************************************************/
 void displayWorld(b2WorldId world, std::list<b2BodyId> bodies, sf::RenderWindow& render, float leader) {
 	b2World_Step(world, 1.0 / 60, 4);
 	render.clear();
@@ -369,8 +453,10 @@ int main() {
 	// List that stores all shifters in the world
 	std::list<b2BodyId> shifters;
 
+	// Spawn the walls
 	worldInit(worldId, bodies);
 
+	// Spawn the balls
 	ballsInit(worldId, bodies, balls);
 
 	// Give first obby a starting height
@@ -387,10 +473,8 @@ int main() {
 	for (int i = 0; i < 6; i++) {
 
 		// Obby is asssigned in random order
-		//int obbyNum = randNums[i];
-		int obbyNum = OBBY_NUM;
-
-		std::cout << "obbyNum = " << obbyNum << std::endl;
+		int obbyNum = randNums[i];
+		//int obbyNum = OBBY_NUM;
 
 		switch (obbyNum) {
 			case 0:
@@ -419,10 +503,8 @@ int main() {
 
 
 		// Add height for subsequent obby
-		height += 600;
-
+		height += 450;
 	}
-
 
 	// Main loop
 	while (window.isOpen()) {
@@ -448,14 +530,17 @@ int main() {
 
 		}
 
-
+		// Update shifter velocity
 		updateShifters(shifters);
 
+		// Store leader ball y position
 		float leader = leadBall(balls);
-		std::cout << "im here when done: " << leader << std::endl;
+
+		// Render the world
 		displayWorld(worldId, bodies, window, leader);
 	}
 
+	// Destroy the world; considering destroying bodies off the screen but probably not needed
 	for (b2BodyId body : bodies) {
 		delete static_cast<sf::RectangleShape*>(b2Body_GetUserData(body));
 		b2DestroyBody(body);
