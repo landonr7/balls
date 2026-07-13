@@ -7,6 +7,7 @@
 #include <vector>
 #include <cmath>
 #include <string>
+#include <utility>
 
 // Screen Resolution
 const int WINDOW_WIDTH = 215;
@@ -97,7 +98,6 @@ namespace creator {
 		std::mt19937 gen(rd());
 		std::uniform_real_distribution<float> dist(-1.0, 1.0);
 		float randVelocity = dist(gen);
-		std::cout << "random number: " << randVelocity << std::endl;
 		b2Body_SetLinearVelocity(bodyId, (b2Vec2){(float)randVelocity, 0.0f});
 
 		// Create SFML shape
@@ -134,8 +134,12 @@ namespace creator {
 		b2Shape_SetDensity(shapeId, 1.0f, 1);
 		b2Shape_SetFriction(shapeId, 0.3f);
 
-		//std::cout << "Body's x position: " << converter::metersToPixels(b2Body_GetPosition(bodyId).x) << std::endl;
-		b2Body_SetLinearVelocity(bodyId, (b2Vec2){1.0f, 0.0f});
+		// Give each ball a random linear velocity
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_real_distribution<float> dist(-3.0, 3.0);
+		float randVelocity = dist(gen);
+		b2Body_SetLinearVelocity(bodyId, (b2Vec2){(float)randVelocity, 0.0f});
 
 		// Create SFML shape
 		sf::RectangleShape* shape = new sf::RectangleShape({size_x, size_y});
@@ -214,22 +218,34 @@ void shifterObby(int y, b2WorldId &worldId, std::list<b2BodyId> &obbies, std::li
 	}
 }
 
-void ballsInit(const std::list<b2BodyId> &balls) {
+void ballsInit(b2WorldId &world, std::list<b2BodyId> &bodies, std::list<b2BodyId> &balls) {
 
-/*
 	for (int i = 0; i <= 4; i++) {
-
 		b2BodyId ball = creator::createBall(
-			worldId,
-			(i * 5),
-			,
+			world,
+			WINDOW_WIDTH / 2,
+			20,
 			BALL_SIZE,
 			b2_dynamicBody);
 
-		obbies.push_back(shifter);
-		shifters.push_back(shifter);
+		bodies.push_back(ball);
+		balls.push_back(ball);
 	}
-*/
+}
+
+float leadBall(const std::list<b2BodyId> &balls) {
+
+	float leadY = 0;
+
+	for (const auto &ball: balls) {
+
+		float y = converter::metersToPixels(b2Body_GetPosition(ball).y);
+
+		if (y > leadY)
+			leadY = y;
+
+	}
+	return leadY - (WINDOW_HEIGHT * 2 / 3);
 }
 
 void updateShifters(const std::list<b2BodyId> &shifters) {
@@ -240,19 +256,19 @@ void updateShifters(const std::list<b2BodyId> &shifters) {
 		//std::cout << "Body's x position: " << x << std::endl;
 
 		if (x <= 55)
-			b2Body_SetLinearVelocity(shifter, (b2Vec2){1.0f, 0.0f});
+			b2Body_SetLinearVelocity(shifter, (b2Vec2){3.0f, 0.0f});
 		else if (x >= 160)
-			b2Body_SetLinearVelocity(shifter, (b2Vec2){-1.0f, 0.0f});
+			b2Body_SetLinearVelocity(shifter, (b2Vec2){-3.0f, 0.0f});
 	}
 }
 
-void displayWorld(b2WorldId world, std::list<b2BodyId> bodies, sf::RenderWindow& render) {
+void displayWorld(b2WorldId world, std::list<b2BodyId> bodies, sf::RenderWindow& render, float leader) {
 	b2World_Step(world, 1.0 / 60, 4);
 	render.clear();
 
 	for (b2BodyId b: bodies) {
 		sf::Shape* shape = static_cast<sf::Shape* >(b2Body_GetUserData(b));
-		shape->setPosition({converter::metersToPixels<float>(b2Body_GetPosition(b).x),converter::metersToPixels<float>(b2Body_GetPosition(b).y)});
+		shape->setPosition({converter::metersToPixels<float>(b2Body_GetPosition(b).x), converter::metersToPixels<float>(b2Body_GetPosition(b).y) - (float)leader});
 		b2Rot q = b2Body_GetRotation(b);
 		shape->setRotation(sf::radians(b2Rot_GetAngle(q)));
 		render.draw(*shape);
@@ -309,27 +325,14 @@ int main() {
 	std::list<b2BodyId> shifters;
 
 	// Ground box
-	bodies.push_back(creator::createBox(worldId, WINDOW_WIDTH - 30, WINDOW_HEIGHT, 800, 20, b2_staticBody));
+	bodies.push_back(creator::createBox(worldId, WINDOW_WIDTH - 30, 100000, 800, 20, b2_staticBody));
 	// Left wall box
-	bodies.push_back(creator::createBox(worldId, 0, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
+	bodies.push_back(creator::createBox(worldId, 0, 0, 2, 200000, b2_staticBody));
 	// Right wall box
-	bodies.push_back(creator::createBox(worldId, WINDOW_WIDTH, 0, 2, WINDOW_HEIGHT * 2, b2_staticBody));
+	bodies.push_back(creator::createBox(worldId, WINDOW_WIDTH, 0, 2, 200000, b2_staticBody));
 
 	// Creating balls
-	//ballsInit(10, worldId, bodies, balls);
-
-	for (int i = 0; i <= 4; i++) {
-		b2BodyId ball = creator::createBall(
-			worldId,
-			WINDOW_WIDTH / 2,
-			20,
-			BALL_SIZE,
-			b2_dynamicBody);
-
-		bodies.push_back(ball);
-	}
-	//shifters.push_back(shifter);
-
+	//ballsInit(worldId, bodies, balls);
 
 	// Creating shifter obby
 	shifterObby(150, worldId, bodies, shifters);
@@ -390,18 +393,24 @@ int main() {
 			else if (const auto* mouseButtonPressed = event->getIf<sf::Event::MouseButtonPressed>()) {
 				if (mouseButtonPressed->button == sf::Mouse::Button::Left) {
 					int x = mouseButtonPressed->position.x;
-					int y = mouseButtonPressed->position.y;
-					bodies.push_back(creator::createBall(worldId, x, y, BALL_SIZE, b2_dynamicBody));
+					int y = mouseButtonPressed->position.y - (WINDOW_HEIGHT * 2 / 3);
+					b2BodyId player = creator::createBall(worldId, x, y, BALL_SIZE, b2_dynamicBody);
+					bodies.push_back(player);
+					balls.push_back(player);
 				}
 			}
 
 		}
 
-		// Continuously update the physical world frame by frame
-		displayWorld(worldId, bodies, window);
 
 		// Update the movement of the shifter obbies
 		updateShifters(shifters);
+
+		// Shift window view to track leader ball
+		float leader = leadBall(balls);
+
+		// Continuously update the physical world frame by frame
+		displayWorld(worldId, bodies, window, leader);
 	}
 
 	for (b2BodyId body : bodies) {
