@@ -428,7 +428,7 @@ void ballsInit(b2WorldId &world, std::vector<std::unique_ptr<Entity>> &entities)
 
 float leadBall(const std::vector<std::unique_ptr<Entity>>& entities) {
 
-	float leadY = WINDOW_HEIGHT * 1 / 3;
+	float leadY = WINDOW_HEIGHT * 1 / 2;
 
 	for (const auto &entity: entities) {
 
@@ -498,11 +498,11 @@ int main() {
 	ballsInit(worldId, bodies);
 
 	// Creating plinko obby
-	PlinkoObby plinkoObby(500);
+	PlinkoObby plinkoObby(100);
     plinkoObby.build(worldId, bodies);
 	
     // Creating shifter obby
-    ShifterObby shifterObby(1000);
+    ShifterObby shifterObby(500);
     shifterObby.build(worldId, bodies);
 
     // Main loop
