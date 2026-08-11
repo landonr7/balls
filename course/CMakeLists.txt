@@ -29,7 +29,7 @@ set(BOX2D_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(box2d sfml)
 
-add_executable(course course.cpp)
+add_executable(course course.cpp creator.cpp)
 
 get_target_property(EXEC_DIR course RUNTIME_OUTPUT_DIRECTORY)
 
@@ -42,11 +42,3 @@ target_link_libraries(course PRIVATE
 	sfml-system
 	box2d
 )
-
-#add_custom_command(
-#	TARGET course
-#	POST_BUILD
-#	COMMAND $<TARGET_FILE:course>
-#	COMMENT "Executing after building..."
-#	VERBATIM
-#)

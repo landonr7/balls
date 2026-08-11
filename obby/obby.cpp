@@ -25,7 +25,6 @@ const int BALL_SIZE = 18;
 
 using namespace converter;
 
-
 enum class EntityType {
     Wall,
     Ball,
@@ -50,10 +49,7 @@ public:
     virtual float getBallY() { return 0.0f; }
 
 	virtual void draw(sf::RenderWindow& window, float cameraY) {
-
-		//Entity* shape = static_cast<Entity*>(b2Body_GetUserData(body));
-
-		shape->setPosition({
+        shape->setPosition({
 			converter::metersToPixels<float>(b2Body_GetPosition(body).x),
 			converter::metersToPixels<float>(b2Body_GetPosition(body).y) - (float)cameraY
 		});
@@ -81,12 +77,9 @@ public:
 
     bool isDestroyed() const { return destroyed; }
 
-    void destroy() { 
-        
-        destroyed = true; 
+    void destroy() { destroyed = true; }
 
-    }
-
+    virtual void collision(Entity* a, Entity* b) {} 
 };
 
 class Wall : public Entity {
@@ -125,6 +118,7 @@ public:
         circle->setPointCount(100);
         circle->setFillColor(sf::Color::Red);
 
+        // Transfer ownership of circle pointer to shape
         shape = std::move(circle);
 
         type = EntityType::Ball;
@@ -156,6 +150,7 @@ public:
         circle->setPointCount(100);
         circle->setFillColor(sf::Color::White);
 
+        // Transfer ownership of circle pointer to shape
         shape = std::move(circle);
 
         type = EntityType::Dot;
@@ -168,9 +163,15 @@ public:
         ));
 	}
 
-	void update() override {}
-};
+    void collision(Entity* a, Entity* b) override {
 
+        if (a->getType() == EntityType::Ball && b->getType() == EntityType::Dot)
+            b->destroy();
+        else if (a->getType() == EntityType::Dot && b->getType() == EntityType::Ball)
+            a->destroy();            
+    }
+
+};
 
 class Shifter : public Entity {
 
@@ -206,13 +207,6 @@ public:
 			b2Body_SetLinearVelocity(body, -b2Body_GetLinearVelocity(body));
 		else if (x >= 160)
 			b2Body_SetLinearVelocity(body, -b2Body_GetLinearVelocity(body));
-
-
-/*      if (x <= 55)
-			b2Body_SetLinearVelocity(body, (b2Vec2){1.0f, 0.0f});
-		else if (x >= 160)
-			b2Body_SetLinearVelocity(body, (b2Vec2){-1.0f, 0.0f});
-*/
     }
 };
 
@@ -273,7 +267,7 @@ public:
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
    
-        // Spawn 4 shifter bars
+        // Spawn 10 shifter bars
         for (int row = 0; row < 10; row++) {
             
             for (int col = 0; col < 10; col++) {
@@ -304,7 +298,7 @@ public:
                 std::make_unique<Shifter>(
                 world,
                 WINDOW_WIDTH / 2,
-                (i * 60) + startY
+                (i * 70) + startY
                 )
             );
         }
@@ -336,14 +330,7 @@ float leadBall(const std::vector<std::unique_ptr<Entity>>& entities) {
 	return leadY - (WINDOW_HEIGHT * 2 / 3);
 }
 
-void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
-    render.clear();
-
-    for (auto& entity : entities) {
-       entity->update();
-    }
-
-	b2World_Step(world, 1.0 / 60, 4);
+void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) {
 
     b2ContactEvents contactEvents = b2World_GetContactEvents(world);
 
@@ -361,14 +348,11 @@ void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entiti
         Entity *entityA = static_cast<Entity*>(b2Body_GetUserData(bodyA)); 
         Entity *entityB = static_cast<Entity*>(b2Body_GetUserData(bodyB));
 
-        if (entityA->getType() == EntityType::Ball && entityB->getType() == EntityType::Dot)
-            entityB->destroy();
-        else if (entityA->getType() == EntityType::Dot && entityB->getType() == EntityType::Ball)
-            entityA->destroy();            
-        
+        entityA->collision(entityA, entityB);
+        entityB->collision(entityA, entityB);        
     }
 
-    for (auto it = entities.begin(); it != entities.end(); ) {
+   for (auto it = entities.begin(); it != entities.end(); ) {
 
         if ((*it)->isDestroyed()) {
 
@@ -380,7 +364,19 @@ void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entiti
             ++it;
         }
     }
+}
 
+void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
+    render.clear();
+
+    for (auto& entity : entities) {
+       entity->update();
+    }
+
+	b2World_Step(world, 1.0 / 60, 4);
+
+    shapesContact(world, entities);
+    
     for (auto& entity : entities) {
 
         entity->draw(render, cameraY);
@@ -425,7 +421,6 @@ int main() {
     // Creating Bounding Boxes
     Boundary boundary(0);
     boundary.build(worldId, bodies);
-   
  	// Creating balls
 	ballsInit(worldId, bodies);
 
@@ -448,31 +443,15 @@ int main() {
 				if (keyPressed->code == sf::Keyboard::Key::Escape) {
 					window.close();
 				}
-			}
-			else if (const auto* mouseButtonPressed = event->getIf<sf::Event::MouseButtonPressed>()) {
-				if (mouseButtonPressed->button == sf::Mouse::Button::Left) {
-					int x = mouseButtonPressed->position.x;
-					int y = mouseButtonPressed->position.y - (WINDOW_HEIGHT * 2 / 3);
-			    }
-			}
-
+			}	
 		}
-
 
 		// Shift window view to track leader ball
 		float leader = leadBall(bodies);
-        
+
         // Continuously update the physical world frame by frame
 		displayWorld(worldId, bodies, window, leader);
 	}
 
-    /*
-	for (b2BodyId body : bodies) {
-		delete static_cast<sf::RectangleShape*>(b2Body_GetUserData(body));
-		b2DestroyBody(body);
-	}
-    */
 	return 0;
 }
-
-

@@ -1,9 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
+#include "creator.h"
 #include <iostream>
-#include <list>
-#include <random>
-#include <algorithm>
 #include <vector>
 #include <cmath>
 #include <string>
@@ -13,213 +11,45 @@
 const int WINDOW_WIDTH = 215;
 const int WINDOW_HEIGHT = 466;
 
-// Plinko Obby Size
+// Plinko Size
 const int PLINKO_SIZE = 12;
 
-// Shifter obby size
+// Shifter Size
 const int SHIFTER_SIZE = 22;
+
+// Dot Size
+const int DOT_SIZE = 10;
 
 // Ball Size
 const int BALL_SIZE = 18;
 
-namespace converter {
-	constexpr double PIXELS_PER_METERS = 30.0;
-	constexpr double PI = 3.14159;
+using namespace converter;
 
-	template<typename T> constexpr T pixelsToMeters(const T& x){return x / PIXELS_PER_METERS;};
-
-	template<typename T> constexpr T metersToPixels(const T& x){return x * PIXELS_PER_METERS;};
-
-	template<typename T> constexpr T degToRad(const T& x){return PI * x / 180.0;};
-
-	template<typename T> constexpr T radToDeg(const T& x){return 180.0 * x / PI;};
-
-}
-
-namespace creator {
-	b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
-
-		// Define a body
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
-
-		// Define a shape
-		b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-
-		// Create body
-		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
-		b2Body_SetType(bodyId, type);
-
-		// Create shape
-		b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
-		b2Shape_SetDensity(shapeId, 1.0f, 1);
-		b2Shape_SetFriction(shapeId, 0.3f);
-
-		// Create SFML shape
-		sf::RectangleShape* shape = new sf::RectangleShape({size_x, size_y});
-		shape->setOrigin({size_x / 2.0f, size_y / 2.0f});
-		shape->setPosition({pos_x, pos_y});
-
-		if (type == b2_dynamicBody) {
-			shape->setFillColor(sf::Color::Red);
-		} else {
-			shape->setFillColor(sf::Color::White);
-		}
-
-		b2Body_SetUserData(bodyId, shape);
-
-		return bodyId;
-	}
-
-	b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, b2BodyType type) {
-
-		// Define a body
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
-
-		// Define a circle
-		b2Circle circle;
-		circle.center = (b2Vec2){0.0f, 0.0f};
-		circle.radius = converter::pixelsToMeters<float>(radius);
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-
-		// Create a body
-		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
-		b2Body_SetType(bodyId, type);
-
-		// Create a circle
-		b2ShapeId shapeId = b2CreateCircleShape(bodyId, &shapeDef, &circle);
-		b2Shape_SetDensity(shapeId, 1.0f, 1);
-		b2Shape_SetFriction(shapeId, 0.3f);
-
-		// Give each ball a random linear velocity
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		std::uniform_real_distribution<float> dist(-1.0, 1.0);
-		float randVelocity = dist(gen);
-		b2Body_SetLinearVelocity(bodyId, (b2Vec2){(float)randVelocity, 0.0f});
-
-		// Create SFML shape
-		sf::CircleShape* shape = new sf::CircleShape(radius);
-		shape->setOrigin({radius, radius});
-		shape->setPosition({pos_x, pos_y});
-		shape->setPointCount(100);
-
-		shape->setFillColor(sf::Color::Red);
-
-		b2Body_SetUserData(bodyId, shape);
-
-		return bodyId;
-	}
-
-	// Creating Shifter Obby
-	b2BodyId createShifterObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
-
-		// Define a body
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
-		bodyDef.rotation = b2MakeRot(converter::degToRad<float>(0));
-
-		// Define a shape
-		b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-
-		// Create body
-		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
-		b2Body_SetType(bodyId, type);
-
-		// Create shape
-		b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
-		b2Shape_SetDensity(shapeId, 1.0f, 1);
-		b2Shape_SetFriction(shapeId, 0.3f);
-
-		// Give each ball a random linear velocity
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		std::uniform_real_distribution<float> dist(-3.0, 3.0);
-		float randVelocity = dist(gen);
-		b2Body_SetLinearVelocity(bodyId, (b2Vec2){(float)randVelocity, 0.0f});
-
-		// Create SFML shape
-		sf::RectangleShape* shape = new sf::RectangleShape({size_x, size_y});
-		shape->setOrigin({size_x / 2.0f, size_y / 2.0f});
-		shape->setPosition({pos_x, pos_y});
-
-		b2Rot q = b2Body_GetRotation(bodyId);
-		shape->setRotation(sf::radians(b2Rot_GetAngle(q)));
-
-		if (type == b2_dynamicBody) {
-			shape->setFillColor(sf::Color::Blue);
-		} else {
-			shape->setFillColor(sf::Color::White);
-		}
-
-		b2Body_SetUserData(bodyId, shape);
-
-		return bodyId;
-	}
-
-
-	b2BodyId createPlinkoObby (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {
-
-		// Define a body
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
-		bodyDef.rotation = b2MakeRot(converter::degToRad<float>(45));
-
-		// Define a shape
-		b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-
-		// Create body
-		b2BodyId bodyId = b2CreateBody(world, &bodyDef);
-		b2Body_SetType(bodyId, type);
-
-		// Create shape
-		b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
-		b2Shape_SetDensity(shapeId, 1.0f, 1);
-		b2Shape_SetFriction(shapeId, 0.3f);
-
-		// Create SFML shape
-		sf::RectangleShape* shape = new sf::RectangleShape({size_x, size_y});
-		shape->setOrigin({size_x / 2.0f, size_y / 2.0f});
-		shape->setPosition({pos_x, pos_y});
-
-		b2Rot q = b2Body_GetRotation(bodyId);
-		shape->setRotation(sf::radians(b2Rot_GetAngle(q)));
-
-		if (type == b2_dynamicBody) {
-			shape->setFillColor(sf::Color::Blue);
-		} else {
-			shape->setFillColor(sf::Color::White);
-		}
-
-		b2Body_SetUserData(bodyId, shape);
-
-		return bodyId;
-	}
-}
-
-
+enum class EntityType {
+    Wall,
+    Ball,
+    Plinko,
+    Shifter,
+    Dot
+};
 
 class Entity {
 
 protected:
 	b2BodyId body;
+    EntityType type;
+    std::unique_ptr<sf::Shape> shape;
+    bool destroyed = false;
 
 public:
-	virtual ~Entity() {}
+	virtual ~Entity() = default;
 
 	virtual void update() {}
 
     virtual float getBallY() { return 0.0f; }
 
 	virtual void draw(sf::RenderWindow& window, float cameraY) {
-
-		sf::Shape* shape = static_cast<sf::Shape* >(b2Body_GetUserData(body));
-
-		shape->setPosition({
+        shape->setPosition({
 			converter::metersToPixels<float>(b2Body_GetPosition(body).x),
 			converter::metersToPixels<float>(b2Body_GetPosition(body).y) - (float)cameraY
 		});
@@ -229,40 +59,76 @@ public:
 		window.draw(*shape);
 	}
 
+    void setBody(b2BodyId newBody) {
+
+        body = newBody;
+        b2Body_SetUserData(body, this);
+    }
+
 	b2BodyId getBody() const {
 
 		return body;
 	}
+
+    EntityType getType() const {
+        
+        return type;
+    }
+
+    bool isDestroyed() const { return destroyed; }
+
+    void destroy() { destroyed = true; }
+
+    virtual void collision(Entity* a, Entity* b) {} 
 };
 
 class Wall : public Entity {
 
 public:
+
     Wall(b2WorldId world, float posX, float posY, float sizeX, float sizeY) {
-   
-        body = creator::createBox(
+  
+        // Create SFML shape
+        shape = std::make_unique<sf::RectangleShape>(sf::Vector2f(sizeX, sizeY));
+        shape->setOrigin({sizeX / 2.0f, sizeY / 2.0f});
+        shape->setPosition({posY, posY});
+        shape->setFillColor(sf::Color::White);
+
+        type = EntityType::Wall;
+
+        setBody(createBox(
             world,
             posX,
             posY,
             sizeX,
-            sizeY,
-            b2_staticBody
-        );
+            sizeY
+        ));
    }
 };
 
 class Ball : public Entity {
 
 public:
-	Ball(b2WorldId world, float x, float y) {
 
-		body = creator::createBall(
+	Ball(b2WorldId world, float posX, float posY) {
+
+        // Create SFML shape
+        auto circle = std::make_unique<sf::CircleShape>(BALL_SIZE);
+        circle->setOrigin({BALL_SIZE, BALL_SIZE});
+        circle->setPointCount(100);
+        circle->setFillColor(sf::Color::Red);
+
+        // Transfer ownership of circle pointer to shape
+        shape = std::move(circle);
+
+        type = EntityType::Ball;
+
+		setBody(createBall(
 			world,
-			x,
-			y,
-			BALL_SIZE,
-			b2_dynamicBody
-		);
+			posX,
+			posY,
+			BALL_SIZE
+		));
 	}
 
     float getBallY() {
@@ -271,33 +137,63 @@ public:
     }
 };
 
-class Plinko : public Entity {
+class Dot : public Entity {
 
 public:
-	Plinko(b2WorldId world, float x, float y) {
 
-		body = creator::createPlinkoObby(
+	Dot(b2WorldId world, float posX, float posY) {
+
+        // Create SFML shape
+        auto circle = std::make_unique<sf::CircleShape>(DOT_SIZE);
+        circle->setOrigin({DOT_SIZE, DOT_SIZE});
+        circle->setPosition({posX, posX});
+        circle->setPointCount(100);
+        circle->setFillColor(sf::Color::Blue);
+
+        // Transfer ownership of circle pointer to shape
+        shape = std::move(circle);
+
+        type = EntityType::Dot;
+
+		setBody(createDot(
 			world,
-			x,
-			y,
-			PLINKO_SIZE,
-			PLINKO_SIZE,
-			b2_staticBody);	
+			posX,
+			posY,
+			DOT_SIZE
+        ));
 	}
+
+    void collision(Entity* a, Entity* b) override {
+
+        if (a->getType() == EntityType::Ball && b->getType() == EntityType::Dot)
+            b->destroy();
+        else if (a->getType() == EntityType::Dot && b->getType() == EntityType::Ball)
+            a->destroy();            
+    }
+
 };
 
 class Shifter : public Entity {
 
 public:
-	Shifter(b2WorldId world, float x, float y) {
 
-		body = creator::createShifterObby(
+	Shifter(b2WorldId world, float posX, float posY) {
+
+        // Create SFML shape
+        shape = std::make_unique<sf::RectangleShape>(sf::Vector2f(SHIFTER_SIZE * 5, SHIFTER_SIZE));
+        shape->setOrigin({SHIFTER_SIZE * 5 / 2.0f, SHIFTER_SIZE / 2.0f});
+        shape->setPosition({posX, posY});
+        shape->setFillColor(sf::Color::Blue);
+
+        type = EntityType::Shifter;
+
+		setBody(createShifter(
 			world,
-			x,
-			y,
-			SHIFTER_SIZE * 4,
-			SHIFTER_SIZE,
-			b2_kinematicBody);
+			posX,
+			posY,
+			SHIFTER_SIZE * 5,
+			SHIFTER_SIZE
+        ));
 	}
 
 	void update() override {
@@ -306,10 +202,33 @@ public:
 			b2Body_GetPosition(body).x
 		);
 
-		if (x <= 55)
-			b2Body_SetLinearVelocity(body, (b2Vec2){1.0f, 0.0f});
+        if (x <= 55)
+			b2Body_SetLinearVelocity(body, -b2Body_GetLinearVelocity(body));
 		else if (x >= 160)
-			b2Body_SetLinearVelocity(body, (b2Vec2){-1.0f, 0.0f});
+			b2Body_SetLinearVelocity(body, -b2Body_GetLinearVelocity(body));
+    }
+};
+
+class Plinko : public Entity {
+
+public:
+	Plinko(b2WorldId world, float posX, float posY) {
+
+        shape = std::make_unique<sf::RectangleShape>(sf::Vector2f(PLINKO_SIZE, PLINKO_SIZE));
+
+        shape->setOrigin({PLINKO_SIZE / 2.0f, PLINKO_SIZE / 2.0f});
+        shape->setPosition({posY, posY});
+        shape->setFillColor(sf::Color::Blue);
+
+        type = EntityType::Plinko;
+
+		setBody(createPlinko(
+			world,
+			posX,
+			posY,
+			PLINKO_SIZE,
+			PLINKO_SIZE
+        ));	
 	}
 };
 
@@ -363,6 +282,30 @@ public:
     }
 };
 
+class DotObby : public Obby {
+
+public:
+    DotObby(float y) : Obby(y) {}
+
+    void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
+   
+        // Spawn 10 shifter bars
+        for (int row = 0; row < 10; row++) {
+            
+            for (int col = 0; col < 10; col++) {
+                
+                entities.push_back(
+                    std::make_unique<Dot>(
+                    world,
+                    row * (WINDOW_WIDTH / 10) + 13,
+                    col * (WINDOW_WIDTH / 10) + startY
+                    )
+                );
+            }
+        }
+    }
+};
+
 class PlinkoObby : public Obby {
 
 public:
@@ -372,10 +315,11 @@ public:
         
         float plinkoPos = 0;
 
-		// One row of plinko
+        // One column of plinko
 		for (int i = 0; i < 3; i++) {
-			// One column of plinko
-			for (int j = 0; j < 7; j++) {
+
+			// One row of plinko
+			for (int j = 0; j < 15; j++) {
 
 				// Offset alternate rows
 				if (j % 2 == 0)
@@ -395,21 +339,21 @@ public:
     } 
 };
 
-class ShifterObby : Obby {
+class ShifterObby : public Obby {
 
 public:
     ShifterObby(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
    
-        // Spawn 4 shifter bars
-        for (int i = 0; i < 5; i++) {
+        // Spawn 10 shifter bars
+        for (int i = 0; i < 10; i++) {
 
             entities.push_back(
                 std::make_unique<Shifter>(
                 world,
-                i * 55,
-                (i * 60) + startY
+                WINDOW_WIDTH / 2,
+                (i * 70) + startY
                 )
             );
         }
@@ -428,7 +372,7 @@ void ballsInit(b2WorldId &world, std::vector<std::unique_ptr<Entity>> &entities)
 
 float leadBall(const std::vector<std::unique_ptr<Entity>>& entities) {
 
-	float leadY = WINDOW_HEIGHT * 1 / 2;
+	float leadY = WINDOW_HEIGHT * 1 / 3;
 
 	for (const auto &entity: entities) {
 
@@ -441,7 +385,43 @@ float leadBall(const std::vector<std::unique_ptr<Entity>>& entities) {
 	return leadY - (WINDOW_HEIGHT * 2 / 3);
 }
 
-void displayWorld(b2WorldId world, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
+void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) {
+
+    b2ContactEvents contactEvents = b2World_GetContactEvents(world);
+
+    for (int i = 0; i < contactEvents.beginCount; ++i) {
+
+        b2ContactBeginTouchEvent* beginEvent = contactEvents.beginEvents + i;
+
+        if (!b2Shape_IsValid(beginEvent->shapeIdA) ||
+            !b2Shape_IsValid(beginEvent->shapeIdB))
+            continue;
+        
+        b2BodyId bodyA = b2Shape_GetBody(beginEvent->shapeIdA);
+        b2BodyId bodyB = b2Shape_GetBody(beginEvent->shapeIdB);
+
+        Entity *entityA = static_cast<Entity*>(b2Body_GetUserData(bodyA)); 
+        Entity *entityB = static_cast<Entity*>(b2Body_GetUserData(bodyB));
+
+        entityA->collision(entityA, entityB);
+        entityB->collision(entityA, entityB);        
+    }
+
+   for (auto it = entities.begin(); it != entities.end(); ) {
+
+        if ((*it)->isDestroyed()) {
+
+            b2DestroyBody((*it)->getBody());
+            it = entities.erase(it);
+        }
+        else {
+
+            ++it;
+        }
+    }
+}
+
+void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
     render.clear();
 
     for (auto& entity : entities) {
@@ -449,8 +429,11 @@ void displayWorld(b2WorldId world, std::vector<std::unique_ptr<Entity>>& entitie
     }
 
 	b2World_Step(world, 1.0 / 60, 4);
-	
+
+    shapesContact(world, entities);
+    
     for (auto& entity : entities) {
+
         entity->draw(render, cameraY);
     }
 
@@ -493,18 +476,21 @@ int main() {
     // Creating Bounding Boxes
     Boundary boundary(0);
     boundary.build(worldId, bodies);
-    
  	// Creating balls
 	ballsInit(worldId, bodies);
 
-	// Creating plinko obby
-	PlinkoObby plinkoObby(100);
-    plinkoObby.build(worldId, bodies);
-	
+    // Creating dot obby
+    DotObby dotObby(200);
+    dotObby.build(worldId, bodies);
+
     // Creating shifter obby
     ShifterObby shifterObby(500);
     shifterObby.build(worldId, bodies);
 
+    // Creating plinko obby
+	PlinkoObby plinkoObby(1500);
+    plinkoObby.build(worldId, bodies);
+	 
     // Main loop
 	while (window.isOpen()) {
 
@@ -516,25 +502,15 @@ int main() {
 				if (keyPressed->code == sf::Keyboard::Key::Escape) {
 					window.close();
 				}
-			}
-			else if (const auto* mouseButtonPressed = event->getIf<sf::Event::MouseButtonPressed>()) {
-				if (mouseButtonPressed->button == sf::Mouse::Button::Left) {
-					int x = mouseButtonPressed->position.x;
-					int y = mouseButtonPressed->position.y - (WINDOW_HEIGHT * 2 / 3);
-			}
-			}
-
+			}	
 		}
-
 
 		// Shift window view to track leader ball
 		float leader = leadBall(bodies);
 
-		// Continuously update the physical world frame by frame
+        // Continuously update the physical world frame by frame
 		displayWorld(worldId, bodies, window, leader);
 	}
 
 	return 0;
 }
-
-
