@@ -23,17 +23,20 @@ namespace converter {
 // Creating Box
 b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y);
 
-// Creating Plinko
-b2BodyId createPlinko (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y);
-
 // Creating Ball
 b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius);
 
 // Creating Shifter
 b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y);
 
+// Creating Plinko
+b2BodyId createPlinko (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y);
+
 // Creating Dot
 b2BodyId createDot (b2WorldId& world, float pos_x, float pos_y, float radius);
+
+// Creating Paddle
+b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2JointId &jointId, bool direction);
 
 /*
 namespace creator {

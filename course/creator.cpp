@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+ #include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
 #include <iostream>
 #include <random>
@@ -24,6 +24,7 @@ b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, fl
     // Define a body
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+    bodyDef.name = "Box";
 
     // Define a shape
     b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
@@ -47,6 +48,7 @@ b2BodyId createPlinko (b2WorldId& world, float pos_x, float pos_y, float size_x,
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
     bodyDef.rotation = b2MakeRot(converter::degToRad<float>(45));
+    bodyDef.name = "Plinko";
     
     // Define a shape
     b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
@@ -70,6 +72,7 @@ b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius) {
     // Define a body
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+    bodyDef.name = "Player";
 
     // Define a circle
     b2Circle circle;
@@ -105,7 +108,8 @@ b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
     bodyDef.rotation = b2MakeRot(converter::degToRad<float>(0));
-
+    bodyDef.name = "Shifter";
+    
     // Define a shape
     b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
     b2ShapeDef shapeDef = b2DefaultShapeDef();
@@ -134,6 +138,7 @@ b2BodyId createDot (b2WorldId& world, float pos_x, float pos_y, float radius) {
     // Define a body
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+    bodyDef.name = "Dot";
 
     // Define a circle
     b2Circle circle;
@@ -151,6 +156,71 @@ b2BodyId createDot (b2WorldId& world, float pos_x, float pos_y, float radius) {
     b2Shape_SetDensity(shapeId, 1.0f, 1);
     b2Shape_SetFriction(shapeId, 0.3f);
     b2Shape_SetRestitution(shapeId, 1.0f);
+    
+    return bodyId;
+}
+
+b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2JointId &jointId, bool direction) {
+
+    // Define a body
+    b2BodyDef bodyDef = b2DefaultBodyDef();
+    bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+    bodyDef.rotation = b2MakeRot(converter::degToRad<float>(50));
+    bodyDef.type = b2_dynamicBody;
+    //bodyDef.name = "Paddle";
+    
+    // Create body
+    b2BodyId bodyId = b2CreateBody(world, &bodyDef);
+
+    // Define a shape
+    b2Polygon box = b2MakeBox(converter::pixelsToMeters<float>(size_x / 2.0), converter::pixelsToMeters<float>(size_y / 2.0));
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+
+    // Create shape
+    b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
+    b2Shape_SetDensity(shapeId, 1.0f, 1);
+    b2Shape_SetFriction(shapeId, 0.3f);
+    b2Shape_SetRestitution(shapeId, 1.0f);
+    
+    // Create pivot
+    b2BodyDef pivotDef = b2DefaultBodyDef();
+    pivotDef.type = b2_staticBody;
+
+    float pivotX;
+    if (direction)
+        pivotX = pos_x - size_x / 2.0f;
+    else
+        pivotX = pos_x + size_x / 2.0f;
+
+    pivotDef.position = {converter::pixelsToMeters<float>(pivotX), converter::pixelsToMeters<float>(pos_y)};
+
+    b2BodyId pivotBody = b2CreateBody(world, &pivotDef);
+
+    b2RevoluteJointDef jointDef = b2DefaultRevoluteJointDef();
+
+    jointDef.bodyIdA = pivotBody;
+    jointDef.bodyIdB = bodyId;
+
+    jointDef.localAnchorA = {0.0f, 0.0f};
+
+    float anchorX;
+    if (direction)
+        jointDef.localAnchorB = {converter::pixelsToMeters<float>(-size_x / 2.0f), 0.0f};
+    else
+        jointDef.localAnchorB = {converter::pixelsToMeters<float>(size_x / 2.0f), 0.0f};
+
+    jointDef.enableLimit = true;
+
+    jointDef.lowerAngle = converter::degToRad<float>(-50.0f);
+    jointDef.upperAngle = converter::degToRad<float>(20.0f);
+
+    jointDef.enableMotor = true;
+
+    jointDef.motorSpeed = converter::degToRad<float>(-200.0f);
+
+    jointDef.maxMotorTorque = 1000.0f;
+
+    jointId = b2CreateRevoluteJoint(world, &jointDef);
     
     return bodyId;
 }

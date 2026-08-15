@@ -32,6 +32,9 @@ b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x
 // Creating Dot
 b2BodyId createDot (b2WorldId& world, float pos_x, float pos_y, float radius);
 
+// Creating Paddle
+b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2JointId &jointId, bool direction);
+
 /*
 namespace creator {
 	b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2BodyType type) {

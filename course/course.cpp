@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <cstring>
 #include <string>
 #include <utility>
 
@@ -17,6 +18,9 @@ const int PLINKO_SIZE = 12;
 // Shifter Size
 const int SHIFTER_SIZE = 22;
 
+// Paddle Size
+const int PADDLE_SIZE = 15;
+
 // Dot Size
 const int DOT_SIZE = 10;
 
@@ -25,19 +29,12 @@ const int BALL_SIZE = 18;
 
 using namespace converter;
 
-enum class EntityType {
-    Wall,
-    Ball,
-    Plinko,
-    Shifter,
-    Dot
-};
-
 class Entity {
 
 protected:
 	b2BodyId body;
-    EntityType type;
+    b2BodyDef bodyDef;
+    const char *name;
     std::unique_ptr<sf::Shape> shape;
     bool destroyed = false;
 
@@ -65,15 +62,9 @@ public:
         b2Body_SetUserData(body, this);
     }
 
-	b2BodyId getBody() const {
+	b2BodyId getBody() const { return body; }
 
-		return body;
-	}
-
-    EntityType getType() const {
-        
-        return type;
-    }
+    b2BodyDef getBodyDef() const { return bodyDef; }
 
     bool isDestroyed() const { return destroyed; }
 
@@ -93,8 +84,6 @@ public:
         shape->setOrigin({sizeX / 2.0f, sizeY / 2.0f});
         shape->setPosition({posY, posY});
         shape->setFillColor(sf::Color::White);
-
-        type = EntityType::Wall;
 
         setBody(createBox(
             world,
@@ -120,8 +109,6 @@ public:
 
         // Transfer ownership of circle pointer to shape
         shape = std::move(circle);
-
-        type = EntityType::Ball;
 
 		setBody(createBall(
 			world,
@@ -153,8 +140,6 @@ public:
         // Transfer ownership of circle pointer to shape
         shape = std::move(circle);
 
-        type = EntityType::Dot;
-
 		setBody(createDot(
 			world,
 			posX,
@@ -165,12 +150,11 @@ public:
 
     void collision(Entity* a, Entity* b) override {
 
-        if (a->getType() == EntityType::Ball && b->getType() == EntityType::Dot)
+        if (strcmp(b2Body_GetName(a->getBody()), "Player") == 0 && strcmp(b2Body_GetName(b->getBody()), "Dot") == 0)
             b->destroy();
-        else if (a->getType() == EntityType::Dot && b->getType() == EntityType::Ball)
+        else if (strcmp(b2Body_GetName(a->getBody()), "Dot") == 0 && strcmp(b2Body_GetName(b->getBody()), "Player") == 0)
             a->destroy();            
     }
-
 };
 
 class Shifter : public Entity {
@@ -184,8 +168,6 @@ public:
         shape->setOrigin({SHIFTER_SIZE * 5 / 2.0f, SHIFTER_SIZE / 2.0f});
         shape->setPosition({posX, posY});
         shape->setFillColor(sf::Color::Blue);
-
-        type = EntityType::Shifter;
 
 		setBody(createShifter(
 			world,
@@ -220,8 +202,6 @@ public:
         shape->setPosition({posY, posY});
         shape->setFillColor(sf::Color::Blue);
 
-        type = EntityType::Plinko;
-
 		setBody(createPlinko(
 			world,
 			posX,
@@ -230,6 +210,43 @@ public:
 			PLINKO_SIZE
         ));	
 	}
+};
+
+class Paddle : public Entity {
+
+private:
+    b2JointId joint;
+
+public:
+
+	Paddle(b2WorldId world, float posX, float posY, bool direction) {
+
+        // Create SFML shape
+        shape = std::make_unique<sf::RectangleShape>(sf::Vector2f(PADDLE_SIZE * 5, PADDLE_SIZE));
+        shape->setOrigin({PADDLE_SIZE * 5 / 2.0f, PADDLE_SIZE / 2.0f});
+        shape->setPosition({posX, posY});
+
+        shape->setFillColor(sf::Color::Blue);
+        setBody(createPaddle(
+			world,
+			posX,
+			posY,
+			PADDLE_SIZE * 5,
+			PADDLE_SIZE,
+            joint,
+            direction
+        ));
+	}
+	
+    void update() override {
+    
+        float angle = converter::radToDeg<float>(b2RevoluteJoint_GetAngle(joint));
+
+        float motorSpeed = b2RevoluteJoint_GetMotorSpeed(joint);
+
+        if (angle <= -50.0f || angle >= 20.0f)
+            b2RevoluteJoint_SetMotorSpeed(joint, -motorSpeed);
+    }
 };
 
 class Obby {
@@ -292,7 +309,7 @@ public:
         // Spawn 10 shifter bars
         for (int row = 0; row < 10; row++) {
             
-            for (int col = 0; col < 10; col++) {
+            for (int col = 0; col < 20; col++) {
                 
                 entities.push_back(
                     std::make_unique<Dot>(
@@ -360,12 +377,48 @@ public:
     }
 };
 
+class PaddleObby : public Obby {
+
+public:
+    PaddleObby(float y) : Obby(y) {}
+
+    void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
+
+        for (int i = 0; i < 3; i++) {
+
+            int height = (i * 150) + startY;
+             
+            entities.push_back(
+                std::make_unique<Paddle>(
+                    world,
+                    25 + WINDOW_WIDTH * 2 / 3,
+                    height,
+                    0
+                )
+            );
+
+            entities.push_back(
+                std::make_unique<Paddle>(
+                    world,
+                    (WINDOW_WIDTH / 3) - 25,
+                    height,
+                    1
+                )
+            );
+        }
+    }
+};
+
 void ballsInit(b2WorldId &world, std::vector<std::unique_ptr<Entity>> &entities) {
 
 	for (int i = 0; i <= 4; i++) {
        
        entities.push_back(
-            std::make_unique<Ball>(world, WINDOW_WIDTH / 2, 20)
+            std::make_unique<Ball>(
+                world, 
+                WINDOW_WIDTH / 2,
+                20
+            )
         );
     }
 }
@@ -476,19 +529,24 @@ int main() {
     // Creating Bounding Boxes
     Boundary boundary(0);
     boundary.build(worldId, bodies);
- 	// Creating balls
+
+    // Creating balls
 	ballsInit(worldId, bodies);
 
+    // Creating paddle obby
+    PaddleObby paddleObby(300);
+    paddleObby.build(worldId, bodies);
+
     // Creating dot obby
-    DotObby dotObby(200);
+    DotObby dotObby(700);
     dotObby.build(worldId, bodies);
 
     // Creating shifter obby
-    ShifterObby shifterObby(500);
+    ShifterObby shifterObby(1200);
     shifterObby.build(worldId, bodies);
 
     // Creating plinko obby
-	PlinkoObby plinkoObby(1500);
+	PlinkoObby plinkoObby(1900);
     plinkoObby.build(worldId, bodies);
 	 
     // Main loop
