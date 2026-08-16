@@ -89,7 +89,7 @@ b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius) {
     b2ShapeId shapeId = b2CreateCircleShape(bodyId, &shapeDef, &circle);
     b2Shape_SetDensity(shapeId, 1.0f, 1);
     b2Shape_SetFriction(shapeId, 0.3f);
-    b2Shape_SetRestitution(shapeId, .35f);
+    b2Shape_SetRestitution(shapeId, .5f);
 
     // Give each ball a random linear velocity
     std::random_device rd;
@@ -122,6 +122,7 @@ b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x
     b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
     b2Shape_SetDensity(shapeId, 1.0f, 1);
     b2Shape_SetFriction(shapeId, 0.3f);
+    b2Shape_SetRestitution(shapeId, .75f);
 
     // Give each ball a random linear velocity
     std::random_device rd;

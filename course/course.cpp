@@ -328,17 +328,17 @@ public:
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
         // Ground Box
         entities.push_back(
-            std::make_unique<Wall>(world, WINDOW_WIDTH - 30, 3500, 800, 20)
+            std::make_unique<Wall>(world, WINDOW_WIDTH - 30, 3000, 800, 20)
         );
 
         // Left Wall Box
         entities.push_back(
-            std::make_unique<Wall>(world, 0, 0, 2, 7000) 
+            std::make_unique<Wall>(world, 0, 0, 2, 6000) 
         );
 
         // Right Wall Box
         entities.push_back(
-            std::make_unique<Wall>(world, WINDOW_WIDTH, 0, 2, 7000)
+            std::make_unique<Wall>(world, WINDOW_WIDTH, 0, 2, 6000)
         );
     }
 };
@@ -350,8 +350,6 @@ public:
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
      
-        float bottom = 0.0f;
-        
         // Spawn 10 dot rows
         for (int row = 0; row < 10; row++) {
            
@@ -365,11 +363,8 @@ public:
                     col * (WINDOW_WIDTH / 10) + startY
                     )
                 );
-                bottom = std::max(col * (WINDOW_WIDTH / 10) + startY, bottom);
             }
         }
-    
-        std::cout << "dot length: " << bottom - startY << std::endl;
     }
 };
 
@@ -381,8 +376,6 @@ public:
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
         
         float plinkoPos = 0;
-
-        float bottom = 0.0f;
 
         // One column of plinko
 		for (int i = 0; i < 3; i++) {
@@ -403,10 +396,8 @@ public:
 						(j * 42) + startY
 					)
 				);
-                bottom = std::max((j * 42) + startY, bottom);
             }
 		}  
-        std::cout << "plinko length: " << bottom - startY << std::endl;
     } 
 };
 
@@ -417,8 +408,6 @@ public:
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
   
-        float bottom = 0.0f;
-
         // Spawn 5 shifter bars
         for (int i = 0; i < 5; i++) {
 
@@ -429,9 +418,7 @@ public:
                 (i * 70) + startY
                 )
             );
-            bottom = std::max((i * 70) + startY, bottom);
         }
-        std::cout << "shifter length: " << bottom - startY << std::endl;
     }
 };
 
@@ -441,8 +428,6 @@ public:
     PaddleObby(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
-
-        int bottom = 0;
 
         for (int i = 0; i < 3; i++) {
 
@@ -465,9 +450,7 @@ public:
                     1
                 )
             );
-            bottom = std::max(height, bottom);
         }
-        std::cout << "paddle length: " << bottom - startY << std::endl;
     }
 };
 
@@ -477,8 +460,6 @@ public:
     ConveyerObby(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
-
-        float bottom = 0.0f;
 
         for (int row = 0; row < 4; row++) {
 
@@ -498,10 +479,8 @@ public:
                     direction
                     )
                 );
-                bottom = std::max(col * 10 + (row * 100) + startY, bottom);
             }
         }
-        std::cout << "conveyer length: " << bottom - startY << std::endl;
     }
 };
 
@@ -530,8 +509,13 @@ float leadBall(const std::vector<std::unique_ptr<Entity>>& entities) {
 		if (y > leadY)
 			leadY = y;
 	}
+    
+    leadY = leadY - WINDOW_HEIGHT * 2 / 3;
 
-	return leadY - (WINDOW_HEIGHT * 2 / 3);
+    if (leadY >= 3000 - WINDOW_HEIGHT)
+        leadY = 3000 - WINDOW_HEIGHT;
+
+    return leadY;
 }
 
 void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) {
@@ -567,6 +551,58 @@ void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entiti
 
             ++it;
         }
+    }
+}
+
+void buildCourse(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) {
+
+	std::vector<int> randNums = {0, 1, 2, 3, 4};
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	//Shuffle them
+	std::shuffle(randNums.begin(), randNums.end(), gen);
+
+    int height = 200;
+
+    for (int i = 0; i < 5; i++) {
+
+        switch (randNums[i]) {
+            case 0: {
+                //Plinko obby
+                PlinkoObby plinkoObby(height);
+                plinkoObby.build(world, entities);
+            break;
+            }
+            case 1: {
+                // Creating shifter obby
+                ShifterObby shifterObby(height);
+                shifterObby.build(world, entities);
+                break;
+            }
+            case 2: {
+                // Creating dot obby
+                DotObby dotObby(height);
+                dotObby.build(world, entities);
+                break;
+            }
+            case 3: {
+                // Creating paddle obby
+                PaddleObby paddleObby(height);
+                paddleObby.build(world, entities);
+                break;
+            }
+            case 4: {
+                // Creating Conveyer obby
+                ConveyerObby conveyerObby(height);
+                conveyerObby.build(world, entities);
+                break;
+            }
+            default:{
+                break;
+            }
+
+        }
+        height += 500;
     }
 }
 
@@ -635,25 +671,7 @@ int main() {
     // Creating balls
 	ballsInit(worldId, bodies);
 
-    // Creating Conveyer obby
-    ConveyerObby conveyerObby(300);
-    conveyerObby.build(worldId, bodies);
-
-    // Creating paddle obby
-    PaddleObby paddleObby(800);
-    paddleObby.build(worldId, bodies);
-
-    // Creating dot obby
-    DotObby dotObby(1300);
-    dotObby.build(worldId, bodies);
-
-    // Creating shifter obby
-    ShifterObby shifterObby(1800);
-    shifterObby.build(worldId, bodies);
-
-    // Creating plinko obby
-	PlinkoObby plinkoObby(2500);
-    plinkoObby.build(worldId, bodies);
+    buildCourse(worldId, bodies);
 	 
     // Main loop
 	while (window.isOpen()) {
