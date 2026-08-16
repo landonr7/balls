@@ -101,24 +101,33 @@ public:
 
 class Ball : public Entity {
 
+private:
+    sf::Texture texture;
+
 public:
 
-	Ball(b2WorldId world, float posX, float posY) {
+	Ball(b2WorldId world, float posX, float posY, int pic) {
+
+        std::string picPath = "../assets/images/" + std::to_string(pic) + ".jpg";
+
+        if (!texture.loadFromFile(picPath))
+            std::cout << "Image not found!\n" << std::endl;
 
         // Create SFML shape
         auto circle = std::make_unique<sf::CircleShape>(BALL_SIZE);
         circle->setOrigin({BALL_SIZE, BALL_SIZE});
         circle->setPointCount(100);
-        circle->setFillColor(sf::Color::Red);
 
         // Transfer ownership of circle pointer to shape
         shape = std::move(circle);
+        shape->setTexture(&texture);
 
-		setBody(createBall(
+        setBody(createBall(
 			world,
 			posX,
 			posY,
-			BALL_SIZE
+			BALL_SIZE,
+            pic
 		));
 	}
 
@@ -154,9 +163,10 @@ public:
 
     void collision(Entity* a, Entity* b) override {
 
-        if (strcmp(b2Body_GetName(a->getBody()), "Player") == 0 && strcmp(b2Body_GetName(b->getBody()), "Dot") == 0)
+        // Add "+ 1" to body name so strcmp skips the first character (which would be [01234]) but still finds \0
+        if (strcmp(b2Body_GetName(a->getBody()) + 1, "Player") == 0 && strcmp(b2Body_GetName(b->getBody()), "Dot") == 0)
             b->destroy();
-        else if (strcmp(b2Body_GetName(a->getBody()), "Dot") == 0 && strcmp(b2Body_GetName(b->getBody()), "Player") == 0)
+        else if (strcmp(b2Body_GetName(a->getBody()), "Dot") == 0 && strcmp(b2Body_GetName(b->getBody()) + 1, "Player") == 0)
             a->destroy();            
     }
 };
@@ -286,7 +296,6 @@ public:
         timer += dt;
 
         if (timer >= 300.0f) {
-
             b2Body_SetAngularVelocity(body, -b2Body_GetAngularVelocity(body));
             timer = 0.0f;
         }
@@ -461,7 +470,7 @@ public:
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
 
-        for (int row = 0; row < 4; row++) {
+        for (int row = 0; row < 5; row++) {
 
             bool direction = row & 1;
             float side = 0.0f;
@@ -475,7 +484,7 @@ public:
                     std::make_unique<Conveyer>(
                     world,
                     side,
-                    col * 10 + (row * 100) + startY,
+                    col * 10 + (row * 80) + startY,
                     direction
                     )
                 );
@@ -486,13 +495,14 @@ public:
 
 void ballsInit(b2WorldId &world, std::vector<std::unique_ptr<Entity>> &entities) {
 
-	for (int i = 0; i <= 4; i++) {
+	for (int i = 0; i < 5; i++) {
        
        entities.push_back(
             std::make_unique<Ball>(
                 world, 
                 WINDOW_WIDTH / 2,
-                20
+                20,
+                i
             )
         );
     }
@@ -564,7 +574,7 @@ void buildCourse(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities
 
     int height = 200;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < randNums.size(); i++) {
 
         switch (randNums[i]) {
             case 0: {

@@ -24,7 +24,7 @@ namespace converter {
 b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y);
 
 // Creating Ball
-b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius);
+b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, int pic);
 
 // Creating Plinko
 b2BodyId createPlinko (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y);
