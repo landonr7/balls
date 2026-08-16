@@ -24,6 +24,9 @@ const int PADDLE_SIZE = 15;
 // Dot Size
 const int DOT_SIZE = 10;
 
+// Conveyer Size
+const int CONV_SIZE = PADDLE_SIZE;
+
 // Ball Size
 const int BALL_SIZE = 18;
 
@@ -41,7 +44,7 @@ protected:
 public:
 	virtual ~Entity() = default;
 
-	virtual void update() {}
+	virtual void update(float dt) {}
 
     virtual float getBallY() { return 0.0f; }
 
@@ -178,7 +181,7 @@ public:
         ));
 	}
 
-	void update() override {
+	void update(float dt) override {
 
 		float x = converter::metersToPixels(
 			b2Body_GetPosition(body).x
@@ -217,7 +220,7 @@ public:
         ));
 	}
 	
-    void update() override {
+    void update(float dt) override {
     
         float angle = converter::radToDeg<float>(b2RevoluteJoint_GetAngle(joint));
 
@@ -227,6 +230,47 @@ public:
             b2RevoluteJoint_SetMotorSpeed(joint, -motorSpeed);
     }
 };
+
+class Conveyer : public Entity {
+
+private:
+    float timer = 0.0f;
+
+public:
+
+	Conveyer(b2WorldId world, float posX, float posY, bool direction) {
+
+        // Create SFML shape
+        auto circle = std::make_unique<sf::CircleShape>(CONV_SIZE);
+        circle->setOrigin({CONV_SIZE, CONV_SIZE});
+        circle->setPosition({posX, posX});
+        circle->setPointCount(100);
+        circle->setFillColor(sf::Color::Blue);
+
+        // Transfer ownership of circle pointer to shape
+        shape = std::move(circle);
+
+		setBody(createConveyer(
+			world,
+			posX,
+			posY,
+			CONV_SIZE,
+            direction
+        ));
+	}
+
+    void update(float dt) override {
+    
+        timer += dt;
+
+        if (timer >= 2.0f) {
+
+            timer -= 2.0f;
+            b2Body_SetAngularVelocity(body, -b2Body_GetAngularVelocity(body));
+        }
+    }
+};
+
 
 class Obby {
 
@@ -242,10 +286,10 @@ public:
 
     virtual void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) = 0;
 
-	virtual void update() {
+	virtual void update(float dt) {
         
         for (auto &entity : entities)
-            entity->update();
+            entity->update(dt);
     }
 
 	virtual void draw(sf::RenderWindow& window, float cameraY) {
@@ -355,6 +399,36 @@ public:
     }
 };
 
+class ConveyerObby : public Obby {
+
+public:
+    ConveyerObby(float y) : Obby(y) {}
+
+    void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
+ 
+        for (int row = 0; row < 4; row++) {
+
+            bool direction = row & 1;
+            float side = 0.0f;
+
+            for (int col = 0; col < 5; col++) { 
+
+                if (direction) side = col * 30;
+                else side = WINDOW_WIDTH - (col * 30);
+
+                entities.push_back(
+                    std::make_unique<Conveyer>(
+                    world,
+                    side,
+                    col * 10 + (row * 100) + startY,
+                    direction
+                    )
+                );
+            }
+        }
+    }
+};
+
 void ballsInit(b2WorldId &world, std::vector<std::unique_ptr<Entity>> &entities) {
 
 	for (int i = 0; i <= 4; i++) {
@@ -420,14 +494,17 @@ void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entiti
     }
 }
 
-void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
+void displayWorld(b2WorldId &world, sf::Clock clock, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
     render.clear();
 
+    float dt = clock.restart().asSeconds();
+
     for (auto& entity : entities) {
-       entity->update();
+    
+        entity->update(dt);
     }
 
-	b2World_Step(world, 1.0 / 60, 4);
+	b2World_Step(world, 1.0f / 60, 4);
 
     shapesContact(world, entities);
     
@@ -463,6 +540,9 @@ int main() {
 	};
 	window.setPosition(window_pos);
 
+    // Creating game clock
+    sf::Clock clock;
+
 	// Box2d World
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2Vec2 gravity = {0.0f, 9.81f};
@@ -479,10 +559,15 @@ int main() {
     // Creating balls
 	ballsInit(worldId, bodies);
 
+    // Creating Conveyer obby
+    ConveyerObby conveyerObby(100);
+    conveyerObby.build(worldId, bodies);
+
+/*
     // Creating paddle obby
     PaddleObby paddleObby(100);
     paddleObby.build(worldId, bodies);
-/*
+
     // Creating dot obby
     DotObby dotObby(300);
     dotObby.build(worldId, bodies);
@@ -509,7 +594,7 @@ int main() {
 		float leader = leadBall(bodies);
 
         // Continuously update the physical world frame by frame
-		displayWorld(worldId, bodies, window, leader);
+		displayWorld(worldId, clock, bodies, window, leader);
 	}
 
 	return 0;

@@ -37,7 +37,7 @@ b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, fl
     // Create shape
     b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
     b2Shape_SetDensity(shapeId, 1.0f, 1);
-    b2Shape_SetFriction(shapeId, 0.3f);
+    b2Shape_SetFriction(shapeId, 10.0f);
 
     return bodyId;
 }
@@ -221,6 +221,35 @@ b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x,
     jointDef.maxMotorTorque = 1000.0f;
 
     jointId = b2CreateRevoluteJoint(world, &jointDef);
+    
+    return bodyId;
+}
+
+b2BodyId createConveyer (b2WorldId& world, float pos_x, float pos_y, float radius, bool direction) {
+
+    // Define a body
+    b2BodyDef bodyDef = b2DefaultBodyDef();
+    bodyDef.position = (b2Vec2){converter::pixelsToMeters<float>(pos_x), converter::pixelsToMeters<float>(pos_y)};
+    bodyDef.name = "Dot";
+    bodyDef.type = b2_kinematicBody;
+    
+    if (direction) bodyDef.angularVelocity = -50.0f;
+    else bodyDef.angularVelocity = 50.0f;
+
+    // Define a circle
+    b2Circle circle;
+    circle.center = (b2Vec2){0.0f, 0.0f};
+    circle.radius = converter::pixelsToMeters<float>(radius);
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+
+    // Create a body
+    b2BodyId bodyId = b2CreateBody(world, &bodyDef);
+
+    // Create a circle
+    b2ShapeId shapeId = b2CreateCircleShape(bodyId, &shapeDef, &circle);
+    b2Shape_SetDensity(shapeId, 1.0f, 1);
+    b2Shape_SetFriction(shapeId, 10.0f);
+    b2Shape_SetRestitution(shapeId, 1.0f);
     
     return bodyId;
 }

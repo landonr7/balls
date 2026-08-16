@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstring>
 #include <string>
+#include <algorithm>
 #include <utility>
 
 // Screen Resolution
@@ -24,6 +25,9 @@ const int PADDLE_SIZE = 15;
 // Dot Size
 const int DOT_SIZE = 10;
 
+// Conveyer Size
+const int CONV_SIZE = PADDLE_SIZE;
+
 // Ball Size
 const int BALL_SIZE = 18;
 
@@ -41,7 +45,7 @@ protected:
 public:
 	virtual ~Entity() = default;
 
-	virtual void update() {}
+	virtual void update(float dt) {}
 
     virtual float getBallY() { return 0.0f; }
 
@@ -178,7 +182,7 @@ public:
         ));
 	}
 
-	void update() override {
+	void update(float dt) override {
 
 		float x = converter::metersToPixels(
 			b2Body_GetPosition(body).x
@@ -238,7 +242,7 @@ public:
         ));
 	}
 	
-    void update() override {
+    void update(float dt) override {
     
         float angle = converter::radToDeg<float>(b2RevoluteJoint_GetAngle(joint));
 
@@ -246,6 +250,46 @@ public:
 
         if (angle <= -50.0f || angle >= 20.0f)
             b2RevoluteJoint_SetMotorSpeed(joint, -motorSpeed);
+    }
+};
+
+class Conveyer : public Entity {
+
+private:
+    float timer = 0.0f;
+
+public:
+
+	Conveyer(b2WorldId world, float posX, float posY, bool direction) {
+
+        // Create SFML shape
+        auto circle = std::make_unique<sf::CircleShape>(CONV_SIZE);
+        circle->setOrigin({CONV_SIZE, CONV_SIZE});
+        circle->setPosition({posX, posX});
+        circle->setPointCount(6);
+        circle->setFillColor(sf::Color::Blue);
+
+        // Transfer ownership of circle pointer to shape
+        shape = std::move(circle);
+
+		setBody(createConveyer(
+			world,
+			posX,
+			posY,
+			CONV_SIZE,
+            direction
+        ));
+	}
+
+    void update(float dt) override {
+    
+        timer += dt;
+
+        if (timer >= 300.0f) {
+
+            b2Body_SetAngularVelocity(body, -b2Body_GetAngularVelocity(body));
+            timer = 0.0f;
+        }
     }
 };
 
@@ -263,10 +307,10 @@ public:
 
     virtual void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) = 0;
 
-	virtual void update() {
+	virtual void update(float dt) {
         
         for (auto &entity : entities)
-            entity->update();
+            entity->update(dt);
     }
 
 	virtual void draw(sf::RenderWindow& window, float cameraY) {
@@ -305,11 +349,14 @@ public:
     DotObby(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
-   
-        // Spawn 10 shifter bars
+     
+        float bottom = 0.0f;
+        
+        // Spawn 10 dot rows
         for (int row = 0; row < 10; row++) {
-            
-            for (int col = 0; col < 20; col++) {
+           
+            // Spawn 10 dot columns
+            for (int col = 0; col < 15; col++) {
                 
                 entities.push_back(
                     std::make_unique<Dot>(
@@ -318,8 +365,11 @@ public:
                     col * (WINDOW_WIDTH / 10) + startY
                     )
                 );
+                bottom = std::max(col * (WINDOW_WIDTH / 10) + startY, bottom);
             }
         }
+    
+        std::cout << "dot length: " << bottom - startY << std::endl;
     }
 };
 
@@ -332,11 +382,13 @@ public:
         
         float plinkoPos = 0;
 
+        float bottom = 0.0f;
+
         // One column of plinko
 		for (int i = 0; i < 3; i++) {
 
 			// One row of plinko
-			for (int j = 0; j < 15; j++) {
+			for (int j = 0; j < 8; j++) {
 
 				// Offset alternate rows
 				if (j % 2 == 0)
@@ -351,8 +403,10 @@ public:
 						(j * 42) + startY
 					)
 				);
-			}
+                bottom = std::max((j * 42) + startY, bottom);
+            }
 		}  
+        std::cout << "plinko length: " << bottom - startY << std::endl;
     } 
 };
 
@@ -362,9 +416,11 @@ public:
     ShifterObby(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
-   
-        // Spawn 10 shifter bars
-        for (int i = 0; i < 10; i++) {
+  
+        float bottom = 0.0f;
+
+        // Spawn 5 shifter bars
+        for (int i = 0; i < 5; i++) {
 
             entities.push_back(
                 std::make_unique<Shifter>(
@@ -373,7 +429,9 @@ public:
                 (i * 70) + startY
                 )
             );
+            bottom = std::max((i * 70) + startY, bottom);
         }
+        std::cout << "shifter length: " << bottom - startY << std::endl;
     }
 };
 
@@ -383,6 +441,8 @@ public:
     PaddleObby(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
+
+        int bottom = 0;
 
         for (int i = 0; i < 3; i++) {
 
@@ -405,7 +465,43 @@ public:
                     1
                 )
             );
+            bottom = std::max(height, bottom);
         }
+        std::cout << "paddle length: " << bottom - startY << std::endl;
+    }
+};
+
+class ConveyerObby : public Obby {
+
+public:
+    ConveyerObby(float y) : Obby(y) {}
+
+    void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
+
+        float bottom = 0.0f;
+
+        for (int row = 0; row < 4; row++) {
+
+            bool direction = row & 1;
+            float side = 0.0f;
+
+            for (int col = 0; col < 5; col++) { 
+
+                if (direction) side = col * 30;
+                else side = WINDOW_WIDTH - (col * 30);
+
+                entities.push_back(
+                    std::make_unique<Conveyer>(
+                    world,
+                    side,
+                    col * 10 + (row * 100) + startY,
+                    direction
+                    )
+                );
+                bottom = std::max(col * 10 + (row * 100) + startY, bottom);
+            }
+        }
+        std::cout << "conveyer length: " << bottom - startY << std::endl;
     }
 };
 
@@ -474,14 +570,17 @@ void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entiti
     }
 }
 
-void displayWorld(b2WorldId &world, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
+void displayWorld(b2WorldId &world, sf::Clock clock, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
     render.clear();
 
+    float dt = clock.restart().asSeconds();
+
     for (auto& entity : entities) {
-       entity->update();
+    
+        entity->update(dt);
     }
 
-	b2World_Step(world, 1.0 / 60, 4);
+	b2World_Step(world, 1.0f / 60, 4);
 
     shapesContact(world, entities);
     
@@ -517,6 +616,9 @@ int main() {
 	};
 	window.setPosition(window_pos);
 
+    // Creating game clock
+    sf::Clock clock;
+
 	// Box2d World
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2Vec2 gravity = {0.0f, 9.81f};
@@ -533,20 +635,24 @@ int main() {
     // Creating balls
 	ballsInit(worldId, bodies);
 
+    // Creating Conveyer obby
+    ConveyerObby conveyerObby(300);
+    conveyerObby.build(worldId, bodies);
+
     // Creating paddle obby
-    PaddleObby paddleObby(300);
+    PaddleObby paddleObby(800);
     paddleObby.build(worldId, bodies);
 
     // Creating dot obby
-    DotObby dotObby(700);
+    DotObby dotObby(1300);
     dotObby.build(worldId, bodies);
 
     // Creating shifter obby
-    ShifterObby shifterObby(1200);
+    ShifterObby shifterObby(1800);
     shifterObby.build(worldId, bodies);
 
     // Creating plinko obby
-	PlinkoObby plinkoObby(1900);
+	PlinkoObby plinkoObby(2500);
     plinkoObby.build(worldId, bodies);
 	 
     // Main loop
@@ -567,7 +673,7 @@ int main() {
 		float leader = leadBall(bodies);
 
         // Continuously update the physical world frame by frame
-		displayWorld(worldId, bodies, window, leader);
+		displayWorld(worldId, clock, bodies, window, leader);
 	}
 
 	return 0;
