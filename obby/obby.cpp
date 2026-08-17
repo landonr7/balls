@@ -560,22 +560,21 @@ int main() {
 	ballsInit(worldId, bodies);
 
     // Creating Conveyer obby
-    ConveyerObby conveyerObby(100);
+    ConveyerObby conveyerObby(200);
     conveyerObby.build(worldId, bodies);
 
-/*
     // Creating paddle obby
-    PaddleObby paddleObby(100);
+    PaddleObby paddleObby(600);
     paddleObby.build(worldId, bodies);
 
     // Creating dot obby
-    DotObby dotObby(300);
+    DotObby dotObby(1000);
     dotObby.build(worldId, bodies);
 
     // Creating shifter obby
-    ShifterObby shifterObby(500);
+    ShifterObby shifterObby(1300);
     shifterObby.build(worldId, bodies);
-*/
+
     // Main loop
 	while (window.isOpen()) {
 

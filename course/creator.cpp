@@ -38,7 +38,7 @@ b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, fl
     b2ShapeId shapeId = b2CreatePolygonShape(bodyId, &shapeDef, &box);
     b2Shape_SetDensity(shapeId, 1.0f, 1);
     b2Shape_SetFriction(shapeId, 10.0f);
-    b2Shape_SetRestitution(shapeId, .5f);
+    b2Shape_SetRestitution(shapeId, .75f);
 
     return bodyId;
 }

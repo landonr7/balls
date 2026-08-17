@@ -8,6 +8,7 @@
 #include <string>
 #include <algorithm>
 #include <utility>
+#include <tuple>
 
 // Screen Resolution
 const int WINDOW_WIDTH = 215;
@@ -49,7 +50,9 @@ public:
 
     virtual float getBallY() { return 0.0f; }
 
-	virtual void draw(sf::RenderWindow& window, float cameraY) {
+    virtual std::string getName() { return std::string(b2Body_GetName(body)); }
+
+    virtual void draw(sf::RenderWindow& window, float cameraY) {
         shape->setPosition({
 			converter::metersToPixels<float>(b2Body_GetPosition(body).x),
 			converter::metersToPixels<float>(b2Body_GetPosition(body).y) - (float)cameraY
@@ -67,8 +70,6 @@ public:
     }
 
 	b2BodyId getBody() const { return body; }
-
-    b2BodyDef getBodyDef() const { return bodyDef; }
 
     bool isDestroyed() const { return destroyed; }
 
@@ -131,7 +132,7 @@ public:
 		));
 	}
 
-    float getBallY() {
+    float getBallY() override {
         
         return converter::metersToPixels(b2Body_GetPosition(body).y);
     }
@@ -352,6 +353,28 @@ public:
     }
 };
 
+class Balls : public Obby {
+
+public:
+    Balls(float y) : Obby(y) {}
+
+    void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
+
+        // Spawn 5 balls
+        for (int i = 0; i < 5; i++) {
+           
+           entities.push_back(
+                std::make_unique<Ball>(
+                    world, 
+                    WINDOW_WIDTH / 2,
+                    startY,
+                    i
+                )
+            );
+        }
+    }
+};
+
 class DotObby : public Obby {
 
 public:
@@ -493,39 +516,44 @@ public:
     }
 };
 
-void ballsInit(b2WorldId &world, std::vector<std::unique_ptr<Entity>> &entities) {
-
-	for (int i = 0; i < 5; i++) {
-       
-       entities.push_back(
-            std::make_unique<Ball>(
-                world, 
-                WINDOW_WIDTH / 2,
-                20,
-                i
-            )
-        );
-    }
+void winnerDisplay(std::string winner) {
+    
+    std::cout << winner << " wins!\n";
 }
 
-float leadBall(const std::vector<std::unique_ptr<Entity>>& entities) {
 
-	float leadY = WINDOW_HEIGHT * 1 / 3;
+std::tuple<float, std::string, float> leadBall(const std::vector<std::unique_ptr<Entity>>& entities, sf::Clock clock, std:: string&prevLead) {
 
-	for (const auto &entity: entities) {
+    float leadY = WINDOW_HEIGHT / 3.0f;
+    std::string curLead = "";
+    float leadTime = 0.0f;
+
+    for (const auto &entity: entities) {
 
         float y = entity->getBallY();
 
-		if (y > leadY)
+		if (y > leadY) {
 			leadY = y;
+            curLead = entity->getName();
+        }
 	}
-    
-    leadY = leadY - WINDOW_HEIGHT * 2 / 3;
 
-    if (leadY >= 3000 - WINDOW_HEIGHT)
-        leadY = 3000 - WINDOW_HEIGHT;
+    if (curLead != prevLead) {
 
-    return leadY;
+        prevLead = curLead;
+        leadTime = clock.getElapsedTime().asSeconds();
+
+        std::cout << curLead << ", " << leadY << ", " << leadTime << std::endl;
+    }
+
+    leadY -= WINDOW_HEIGHT * 2.0f / 3.0f;
+
+    if (leadY >= 3000.0f - WINDOW_HEIGHT) {
+
+        leadY = 3000.0f - WINDOW_HEIGHT;
+        
+    }
+    return {leadY, curLead, leadTime};
 }
 
 void shapesContact(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) {
@@ -626,10 +654,10 @@ void displayWorld(b2WorldId &world, sf::Clock clock, std::vector<std::unique_ptr
         entity->update(dt);
     }
 
-	b2World_Step(world, 1.0f / 60, 4);
+	b2World_Step(world, 1.0f / 60.0f, 4);
 
     shapesContact(world, entities);
-    
+
     for (auto& entity : entities) {
 
         entity->draw(render, cameraY);
@@ -674,12 +702,15 @@ int main() {
 	// List that holds all bodies in the world
 	std::vector<std::unique_ptr<Entity>> bodies;
 
+    std::string prevLead = "";
+
     // Creating Bounding Boxes
     Boundary boundary(0);
     boundary.build(worldId, bodies);
 
     // Creating balls
-	ballsInit(worldId, bodies);
+    Balls balls(20);
+    balls.build(worldId, bodies);
 
     buildCourse(worldId, bodies);
 	 
@@ -698,8 +729,8 @@ int main() {
 		}
 
 		// Shift window view to track leader ball
-		float leader = leadBall(bodies);
-
+		auto [leader, player, leadTime] = leadBall(bodies, clock, prevLead);
+        
         // Continuously update the physical world frame by frame
 		displayWorld(worldId, clock, bodies, window, leader);
 	}
