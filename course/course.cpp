@@ -631,9 +631,16 @@ void buildCourse(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities
     }
 }
 
-void winnerDisplay(sf::RenderWindow &render, float leadY, std::string winner) {
+void winnerDisplay(sf::RenderWindow &render, float leadY, const std::string &currentLeader, bool &first, std::string &winnerName) {
 
-   if (leadY >= 2500.0f) {
+    if (leadY >= 2500.0f && !first) {
+
+        first = true;
+        winnerName = currentLeader;
+    }
+
+    if (!first)
+        return;
 
         sf::Font papyrus;
         if (!papyrus.openFromFile("build/assets/fonts/papyrus.ttf"))
@@ -644,12 +651,11 @@ void winnerDisplay(sf::RenderWindow &render, float leadY, std::string winner) {
         sf::Texture texture;
         sf::Vector2f picNewSize({180.0f, 180.0f});
 
-
-        std::string picPath = "../assets/images/" + winner.substr(0,1) + ".jpg";
+        std::string picPath = "../assets/images/" + winnerName.substr(0,1) + ".jpg";
         if (!texture.loadFromFile(picPath))
             std::cerr << "Image not found!\n";
 
-        text.setString(winner);
+        text.setString(winnerName);
         textWin.setString("wins!");
 
         text.setCharacterSize(36);
@@ -690,8 +696,6 @@ void winnerDisplay(sf::RenderWindow &render, float leadY, std::string winner) {
         render.draw(image);
         render.draw(text);
         render.draw(textWin);
-
-    }
 
 }
 
@@ -734,6 +738,11 @@ int main() {
     // Saves previous leader
     std::string prevLead = "";
 
+    // Has someone reached the bottom yet?
+    bool first = false;
+    // Name of winner
+    std::string winnerName = "";
+
     // Creating Bounding Boxes
     Boundary boundary(0);
     boundary.build(worldId, bodies);
@@ -742,7 +751,7 @@ int main() {
     Balls balls(20);
     balls.build(worldId, bodies);
 
-    buildCourse(worldId, bodies);
+    //buildCourse(worldId, bodies);
 	 
     // Main loop
 	while (window.isOpen()) {
@@ -766,7 +775,7 @@ int main() {
 		// Shift window view to track leader ball
 		auto [leadY, player, leadTime] = leadBall(bodies, clock, prevLead);
 
-        winnerDisplay(window, leadY, player);
+        winnerDisplay(window, leadY, player, first, winnerName);
 
         for (auto& body : bodies) {
         
