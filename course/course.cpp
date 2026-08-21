@@ -3,11 +3,8 @@
 #include "creator.h"
 #include <iostream>
 #include <vector>
-#include <cmath>
 #include <cstring>
 #include <string>
-#include <algorithm>
-#include <utility>
 #include <tuple>
 
 // Screen Resolution
@@ -46,7 +43,7 @@ protected:
 public:
 	virtual ~Entity() = default;
 
-	virtual void update(float dt) {}
+	virtual void update(sf::Clock clock) {}
 
     virtual float getBallY() { return 0.0f; }
 
@@ -135,7 +132,8 @@ public:
     float getBallY() override {
         
         return converter::metersToPixels(b2Body_GetPosition(body).y);
-    }
+    } 
+
 };
 
 class Dot : public Entity {
@@ -149,7 +147,7 @@ public:
         circle->setOrigin({DOT_SIZE, DOT_SIZE});
         circle->setPosition({posX, posX});
         circle->setPointCount(100);
-        circle->setFillColor(sf::Color::Blue);
+        circle->setFillColor(sf::Color(255, 0, 255));
 
         // Transfer ownership of circle pointer to shape
         shape = std::move(circle);
@@ -182,7 +180,7 @@ public:
         shape = std::make_unique<sf::RectangleShape>(sf::Vector2f(SHIFTER_SIZE * 5, SHIFTER_SIZE));
         shape->setOrigin({SHIFTER_SIZE * 5 / 2.0f, SHIFTER_SIZE / 2.0f});
         shape->setPosition({posX, posY});
-        shape->setFillColor(sf::Color::Blue);
+        shape->setFillColor(sf::Color(255, 165, 0));
 
 		setBody(createShifter(
 			world,
@@ -193,7 +191,7 @@ public:
         ));
 	}
 
-	void update(float dt) override {
+	void update(sf::Clock lock) override {
 
 		float x = converter::metersToPixels(
 			b2Body_GetPosition(body).x
@@ -215,7 +213,7 @@ public:
 
         shape->setOrigin({PLINKO_SIZE / 2.0f, PLINKO_SIZE / 2.0f});
         shape->setPosition({posY, posY});
-        shape->setFillColor(sf::Color::Blue);
+        shape->setFillColor(sf::Color::Yellow);
 
 		setBody(createPlinko(
 			world,
@@ -241,7 +239,7 @@ public:
         shape->setOrigin({PADDLE_SIZE * 5 / 2.0f, PADDLE_SIZE / 2.0f});
         shape->setPosition({posX, posY});
 
-        shape->setFillColor(sf::Color::Blue);
+        shape->setFillColor(sf::Color::Green);
         setBody(createPaddle(
 			world,
 			posX,
@@ -253,7 +251,7 @@ public:
         ));
 	}
 	
-    void update(float dt) override {
+    void update(sf::Clock clock) override {
     
         float angle = converter::radToDeg<float>(b2RevoluteJoint_GetAngle(joint));
 
@@ -292,13 +290,12 @@ public:
         ));
 	}
 
-    void update(float dt) override {
+    void update(sf::Clock clock) override {
     
-        timer += dt;
+        timer = clock.getElapsedTime().asSeconds();
 
-        if (timer >= 300.0f) {
+        if ((int)timer % 3 == 0) {
             b2Body_SetAngularVelocity(body, -b2Body_GetAngularVelocity(body));
-            timer = 0.0f;
         }
     }
 };
@@ -317,10 +314,10 @@ public:
 
     virtual void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) = 0;
 
-	virtual void update(float dt) {
+	virtual void update(sf::Clock clock) {
         
         for (auto &entity : entities)
-            entity->update(dt);
+            entity->update(clock);
     }
 
 	virtual void draw(sf::RenderWindow& window, float cameraY) {
@@ -336,11 +333,6 @@ public:
     Boundary(float y) : Obby(y) {}
 
     void build(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities) override {
-        // Ground Box
-        entities.push_back(
-            std::make_unique<Wall>(world, WINDOW_WIDTH - 30, 3000, 800, 20)
-        );
-
         // Left Wall Box
         entities.push_back(
             std::make_unique<Wall>(world, 0, 0, 2, 6000) 
@@ -516,12 +508,6 @@ public:
     }
 };
 
-void winnerDisplay(std::string winner) {
-    
-    std::cout << winner << " wins!\n";
-}
-
-
 std::tuple<float, std::string, float> leadBall(const std::vector<std::unique_ptr<Entity>>& entities, sf::Clock clock, std:: string&prevLead) {
 
     float leadY = WINDOW_HEIGHT / 3.0f;
@@ -538,12 +524,12 @@ std::tuple<float, std::string, float> leadBall(const std::vector<std::unique_ptr
         }
 	}
 
-    if (curLead != prevLead) {
+    if (curLead != prevLead && leadY < 2500.0f ) {
 
         prevLead = curLead;
         leadTime = clock.getElapsedTime().asSeconds();
 
-        std::cout << curLead << ", " << leadY << ", " << leadTime << std::endl;
+        std::cout << curLead << ", " << leadTime << std::endl;
     }
 
     leadY -= WINDOW_HEIGHT * 2.0f / 3.0f;
@@ -553,6 +539,7 @@ std::tuple<float, std::string, float> leadBall(const std::vector<std::unique_ptr
         leadY = 3000.0f - WINDOW_HEIGHT;
         
     }
+
     return {leadY, curLead, leadTime};
 }
 
@@ -644,31 +631,71 @@ void buildCourse(b2WorldId world, std::vector<std::unique_ptr<Entity>> &entities
     }
 }
 
-void displayWorld(b2WorldId &world, sf::Clock clock, std::vector<std::unique_ptr<Entity>>& entities, sf::RenderWindow& render, float cameraY) {
-    render.clear();
+void winnerDisplay(sf::RenderWindow &render, float leadY, std::string winner) {
 
-    float dt = clock.restart().asSeconds();
+   if (leadY >= 2500.0f) {
 
-    for (auto& entity : entities) {
-    
-        entity->update(dt);
+        sf::Font papyrus;
+        if (!papyrus.openFromFile("build/assets/fonts/papyrus.ttf"))
+            std::cerr << "Error loading file!\n";
+        sf::Text text(papyrus);
+        sf::Text textWin(papyrus);
+
+        sf::Texture texture;
+        sf::Vector2f picNewSize({180.0f, 180.0f});
+
+
+        std::string picPath = "../assets/images/" + winner.substr(0,1) + ".jpg";
+        if (!texture.loadFromFile(picPath))
+            std::cerr << "Image not found!\n";
+
+        text.setString(winner);
+        textWin.setString("wins!");
+
+        text.setCharacterSize(36);
+        textWin.setCharacterSize(36);
+
+        text.setFillColor(sf::Color::White);
+        textWin.setFillColor(sf::Color::White);
+        
+        sf::FloatRect textBox = text.getLocalBounds();
+        text.setOrigin({
+            textBox.position.x + textBox.size.x / 2.0f,
+            textBox.position.y + textBox.size.y / 2.0f
+        });
+
+        sf::FloatRect textBoxWin = textWin.getLocalBounds();
+        textWin.setOrigin({
+            textBoxWin.position.x + textBoxWin.size.x / 2.0f,
+            textBoxWin.position.y + textBoxWin.size.y / 2.0f
+        });
+
+        text.setPosition({
+            (WINDOW_WIDTH / 2.0f),
+            (WINDOW_HEIGHT / 2.0f) + 110.0f
+        });
+        textWin.setPosition({
+            (WINDOW_WIDTH / 2.0f),
+            (WINDOW_HEIGHT / 2.0f) + 140.0f
+        });
+ 
+        sf::Vector2f picOrigSize = (sf::Vector2f)texture.getSize();
+        sf::Sprite image(texture);
+        image.setPosition({(WINDOW_WIDTH / 2.0f) - 90.0f, (WINDOW_HEIGHT / 2.0f) - 100.0f});        
+        image.setScale({
+            picNewSize.x / picOrigSize.x,
+            picNewSize.y / picOrigSize.y
+        });
+
+        render.draw(image);
+        render.draw(text);
+        render.draw(textWin);
+
     }
 
-	b2World_Step(world, 1.0f / 60.0f, 4);
-
-    shapesContact(world, entities);
-
-    for (auto& entity : entities) {
-
-        entity->draw(render, cameraY);
-    }
-
-	render.display();
 }
 
 int main() {
-
-	std::cout << "Hello, World!" << std::endl;
 
 	// Create main window
 	sf::RenderWindow window(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), "balls");
@@ -690,10 +717,12 @@ int main() {
 	};
 	window.setPosition(window_pos);
 
-    // Creating game clock
+    // Create game clock
     sf::Clock clock;
-
-	// Box2d World
+    // Time in seconds
+    float dt = clock.restart().asSeconds();
+	
+    // Box2d World
 	b2WorldDef worldDef = b2DefaultWorldDef();
 	b2Vec2 gravity = {0.0f, 9.81f};
 	worldDef.gravity = gravity;
@@ -702,6 +731,7 @@ int main() {
 	// List that holds all bodies in the world
 	std::vector<std::unique_ptr<Entity>> bodies;
 
+    // Saves previous leader
     std::string prevLead = "";
 
     // Creating Bounding Boxes
@@ -728,12 +758,27 @@ int main() {
 			}	
 		}
 
-		// Shift window view to track leader ball
-		auto [leader, player, leadTime] = leadBall(bodies, clock, prevLead);
+        window.clear();
         
-        // Continuously update the physical world frame by frame
-		displayWorld(worldId, clock, bodies, window, leader);
-	}
+        // Handle contact events
+        shapesContact(worldId, bodies);
+
+		// Shift window view to track leader ball
+		auto [leadY, player, leadTime] = leadBall(bodies, clock, prevLead);
+
+        winnerDisplay(window, leadY, player);
+
+        for (auto& body : bodies) {
+        
+            body->update(clock);
+        
+            body->draw(window, leadY);
+        }
+
+        b2World_Step(worldId, 1.0f / 60.0f, 4);
+
+        window.display();
+    }
 
 	return 0;
 }
