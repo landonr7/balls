@@ -29,9 +29,12 @@ set(BOX2D_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(box2d sfml)
 
-add_executable(course course.cpp creator.cpp)
+add_executable(course course.cpp creator.cpp entity.cpp obby.cpp)
 
 get_target_property(EXEC_DIR course RUNTIME_OUTPUT_DIRECTORY)
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 
 message(STATUS "Target runtime output dir: ${EXEC_DIR}")
 message(STATUS "Standard binary dir: ${CMAKE_CURRENT_BINARY_DIR}")

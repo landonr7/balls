@@ -1,10 +1,11 @@
- #include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
 #include <iostream>
 #include <random>
 #include <algorithm>
 #include <cmath>
 
+// Perform conversions of window pixels to world meters visa versa and degrees to radians visa versa
 namespace converter {
 	constexpr double PIXELS_PER_METERS = 30.0;
 	constexpr double PI = 3.14159;
@@ -19,6 +20,7 @@ namespace converter {
 
 }
 
+// Create box body; applicable to Wall entities
 b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y) {
 
     // Define a body
@@ -43,6 +45,7 @@ b2BodyId createBox (b2WorldId& world, float pos_x, float pos_y, float size_x, fl
     return bodyId;
 }
 
+// Create plinko body; applicable to Plinko entities
 b2BodyId createPlinko (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y) {
 
     // Define a body
@@ -68,6 +71,7 @@ b2BodyId createPlinko (b2WorldId& world, float pos_x, float pos_y, float size_x,
     return bodyId;
 }
 
+// Create ball body; applicable to "Player" entities
 b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, int pic) {
 
     // Define a body
@@ -95,7 +99,7 @@ b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, i
     b2Shape_SetFriction(shapeId, 0.3f);
     b2Shape_SetRestitution(shapeId, .5f);
 
-    // Give each ball a random linear velocity
+    // Give each ball a random linear velocity, so initial position and velocity is fair
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> dist(-1.0, 1.0);
@@ -105,7 +109,7 @@ b2BodyId createBall (b2WorldId& world, float pos_x, float pos_y, float radius, i
     return bodyId;
 }
 
-// Creating Shifter Obby
+// Create shifter body; applicable to Shifter entities
 b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y) {
 
     // Define a body
@@ -128,7 +132,7 @@ b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x
     b2Shape_SetFriction(shapeId, 0.3f);
     b2Shape_SetRestitution(shapeId, .5f);
 
-    // Give each ball a random linear velocity
+    // Give each ball a random linear velocity, so no two shifters are moving in-sync
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<float> dist(1.0, 5.0);
@@ -138,6 +142,7 @@ b2BodyId createShifter (b2WorldId& world, float pos_x, float pos_y, float size_x
     return bodyId;
 }
 
+// Create dot body; applicable to Dot entities
 b2BodyId createDot (b2WorldId& world, float pos_x, float pos_y, float radius) {
 
     // Define a body
@@ -165,6 +170,7 @@ b2BodyId createDot (b2WorldId& world, float pos_x, float pos_y, float radius) {
     return bodyId;
 }
 
+// Create paddle body; applicable to Paddle entities
 b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x, float size_y, b2JointId &jointId, bool direction) {
 
     // Define a body
@@ -187,10 +193,11 @@ b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x,
     b2Shape_SetFriction(shapeId, 0.3f);
     b2Shape_SetRestitution(shapeId, 1.0f);
     
-    // Create pivot
+    // Create pivot to add rotational attribute to paddle body
     b2BodyDef pivotDef = b2DefaultBodyDef();
     pivotDef.type = b2_staticBody;
 
+    // Change rotation depending on side of the game area
     float pivotX;
     if (direction)
         pivotX = pos_x - size_x / 2.0f;
@@ -201,6 +208,7 @@ b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x,
 
     b2BodyId pivotBody = b2CreateBody(world, &pivotDef);
 
+    // Joint that links pivot body and paddle body
     b2RevoluteJointDef jointDef = b2DefaultRevoluteJointDef();
 
     jointDef.bodyIdA = pivotBody;
@@ -208,6 +216,7 @@ b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x,
 
     jointDef.localAnchorA = {0.0f, 0.0f};
 
+    // Change side of paddle body joint body is anchored to depending on side of game area
     float anchorX;
     if (direction)
         jointDef.localAnchorB = {converter::pixelsToMeters<float>(-size_x / 2.0f), 0.0f};
@@ -230,6 +239,7 @@ b2BodyId createPaddle (b2WorldId& world, float pos_x, float pos_y, float size_x,
     return bodyId;
 }
 
+// Create conveyer body; applicable to Conveyer entities
 b2BodyId createConveyer (b2WorldId& world, float pos_x, float pos_y, float radius, bool direction) {
 
     // Define a body
@@ -238,6 +248,7 @@ b2BodyId createConveyer (b2WorldId& world, float pos_x, float pos_y, float radiu
     bodyDef.name = "Dot";
     bodyDef.type = b2_kinematicBody;
     
+    // Inverse rotation direction depending on side of game area
     if (direction) bodyDef.angularVelocity = -20.0f;
     else bodyDef.angularVelocity = 20.0f;
 
