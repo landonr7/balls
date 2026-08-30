@@ -43,5 +43,6 @@ target_link_libraries(course PRIVATE
 	sfml-graphics
 	sfml-window
 	sfml-system
-	box2d
+	smfl-network
+    box2d
 )

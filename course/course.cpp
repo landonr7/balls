@@ -2,6 +2,7 @@
 #include <box2d/box2d.h>
 #include "entity.h"
 #include "obby.h"
+#include "client.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -249,7 +250,13 @@ void winnerDisplay(sf::RenderWindow &render, float leadY, const std::string &cur
 
 int main() {
 
-	// Create main window
+    // Http request
+
+
+    // Http response
+
+
+    // Create main window
 	sf::RenderWindow window(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), "balls");
 	window.setFramerateLimit(60);
 
