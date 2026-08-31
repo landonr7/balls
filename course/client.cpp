@@ -4,37 +4,44 @@
 #include <sstream>
 #include <string>
 #include <stdexcept>
+#include <map>
 
-/*
-// HTTP request
-sf::Http::Request req;
+const std::map<std::string, std::string> genres = {
 
-// Fill the request...
-request.setMethod(sf::Http::Request::Post);
-request.setUri("/page.html");
-request.setHttpVersion(1, 1);
-request.setField("From", "me");
-request.setField("Content-Type", "placeholder");
-request.setBody("para1=value1&para2=value2");
+    {"Rap", "116"},
+    {"Pop", "132"},
+    {"Reggae", "144"},
+    {"R&B", "165"},
+    {"Soul", "169"},
+    {"Alterantive", "85"},
+};
 
-// HTTP Response
-sf::Http::Response res = http.sendRequest(request);
+const std::array<std::string, 2> discogMethods = {
 
-std::cout << "status: " << resgetStatus() << std::endl;
-std::cout << "HTTP version: " << res.getMajorHttpVersion() << ", " << res.getMinorHttpsVersion() << std::endl;
-std::cout << "Content-Type header: " << res.getField("Content-Type") << std::endl;
-std::cout << "body: " << res.getBody() << std::endl;
-*/
+    "tracks",
+    // BROKEN 8/30/26 "artists",
+    "albums"
+};
 
-namespace Retrieving {
+namespace TopList {
     struct Track {
+        
         std::string trackName;
         std::string artistName;
         std::string picture;
-
     };
 
+/*
+ * Broken 8/30/26
     struct Artist {
+        
+        std::string artistName;
+        std::string picture;
+    };
+*/
+    struct Album {
+        
+        std::string albumName;
         std::string artistName;
         std::string picture;
     };
@@ -43,7 +50,7 @@ namespace Retrieving {
 
 using json = nlohmann::json;
 
-std::string retrieveData() {
+std::string retrieveData(const std::string genre, const std::string discogMethod) {
 
     sf::Http http;
     http.setHost("api.deezer.com");
@@ -51,13 +58,13 @@ std::string retrieveData() {
     // HTTP request
     sf::Http::Request req;
 
-    std::string uri = "/chart/116/tracks"; 
+    //std::string uri = "/chart/116/tracks"; 
 
     try {
         
         // Fill the request...
         req.setMethod(sf::Http::Request::Method::Get);
-        req.setUri(uri);
+        req.setUri("chart/" + genre + "/" + discogMethod);
         req.setHttpVersion(1, 1);
     }
     catch (const std::exception &e) {
@@ -81,19 +88,57 @@ std::string retrieveData() {
     return "null";
 }
 
-void parseResponse(const std::string &body) {
+void parseAlbumResponse(const std::string &body) {
 
     try {
         
         json data = json::parse(body);
 
-        std::vector<Retrieving::Track> tracks;
+        std::vector<TopList::Album> albums;
+
+        int count = 0;
+        for (const auto &album : data["data"]) {
+            if (count == 5) break;
+
+            TopList::Album a;
+
+            a.albumName = album["title"];
+            a.artistName = album["artist"]["name"];
+            a.picture = album["artist"]["picture"];
+
+            albums.push_back(a);
+
+            count++;
+        }
+
+        for (const auto &album : albums) {
+
+            std::cout << "album title: " << album.albumName << "\n";
+            std::cout << "artist name: " << album.artistName << "\n";
+            std::cout << "picture: " << album.picture << "\n";
+            std::cout << "-------------------------------" << "\n";
+
+        }
+    }
+    catch (json::parse_error &e) {
+
+        std::cerr << "parse error at : " << e.what() << "\n";
+    }
+}
+
+void parseTrackResponse(const std::string &body) {
+
+    try {
+        
+        json data = json::parse(body);
+
+        std::vector<TopList::Track> tracks;
 
         int count = 0;
         for (const auto &track : data["data"]) {
             if (count == 5) break;
 
-            Retrieving::Track t;
+            TopList::Track t;
 
             t.trackName = track["title"];
             t.artistName = track["artist"]["name"];
@@ -119,11 +164,69 @@ void parseResponse(const std::string &body) {
     }
 }
 
+/*
+ * BROKEN 8/30/26
+void parseArtistResponse(const std::string &body) {
+
+    try {
+        
+        json data = json::parse(body);
+
+        std::cout << data.dump(3) << "\n";
+
+        std::vector<TopList::Artist> artists;
+
+        int count = 0;
+        for (const auto &artist : data["data"]) {
+            if (count == 5) break;
+
+            TopList::Artist a;
+
+            a.artistName = artist["artist"]["name"];
+            a.picture = artist["artist"]["picture"];
+
+            artists.push_back(t);
+
+            count++;
+        }
+
+        for (const auto &artist : artist) {
+
+            std::cout << "artist name: " << artist.artistName << "\n";
+            std::cout << "picture: " << artist.picture << "\n";
+            std::cout << "-------------------------------" << "\n";
+
+        }
+
+   }
+    catch (json::parse_error &e) {
+
+        std::cerr << "parse error at : " << e.what() << "\n";
+    }
+}
+*/
+
 int main() {
 
-    const std::string res = retrieveData();
+    std::string res = "";
 
-    parseResponse(res);
+    for (const std::string &method : discogMethods) {
+
+        for (const auto &[key, value] : genres) {
+
+            std::cout << "\n\n---- Retrieving top " << method << " for " << key << " ----" << "\n\n";
+
+            res = retrieveData(value, method);
+
+            if (method == "albums") {
+                parseAlbumResponse(res);
+            }
+            else if ( method == "tracks") {
+                parseTrackResponse(res);
+            }
+        }
+    }
+    //parseTrackResponse(res);
 
     return 0;
 }
