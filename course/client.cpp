@@ -1,4 +1,5 @@
 #include <SFML/Network.hpp>
+#include <SFML/Graphics.hpp>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <sstream>
@@ -13,13 +14,13 @@ const std::map<std::string, std::string> genres = {
     {"Reggae", "144"},
     {"R&B", "165"},
     {"Soul", "169"},
-    {"Alterantive", "85"},
+    {"Alternative", "85"},
 };
 
 const std::array<std::string, 2> discogMethods = {
 
     "tracks",
-    // BROKEN 8/30/26 "artists",
+    // Broken 8/30/26 "artists",
     "albums"
 };
 
@@ -27,6 +28,7 @@ namespace TopList {
     struct Track {
         
         std::string trackName;
+        long trackId;
         std::string artistName;
         std::string picture;
     };
@@ -42,15 +44,15 @@ namespace TopList {
     struct Album {
         
         std::string albumName;
+        long albumId;
         std::string artistName;
-        std::string picture;
+        std::string cover;
     };
 }
-// https://api.deezer.com/chart/116/tracks
 
 using json = nlohmann::json;
 
-std::string retrieveData(const std::string genre, const std::string discogMethod) {
+std::string retrieveImage(const std::string imageUrl) {
 
     sf::Http http;
     http.setHost("api.deezer.com");
@@ -58,7 +60,84 @@ std::string retrieveData(const std::string genre, const std::string discogMethod
     // HTTP request
     sf::Http::Request req;
 
-    //std::string uri = "/chart/116/tracks"; 
+    try {
+        
+        // Fill the request...
+        req.setMethod(sf::Http::Request::Method::Get);
+        req.setUri(imageUrl);
+        req.setHttpVersion(1, 1);
+    }
+    catch (const std::exception &e) {
+
+        std::cerr << "Exception: " << e.what() << "\n" << "Request for image URL failed.\n\n";
+    }
+    
+    // HTTP Response
+    sf::Http::Response res = http.sendRequest(req);
+
+    int status = static_cast<int>(res.getStatus());
+    std::string loc = "";
+    std::string host = "";
+    int count = 0;
+    size_t pos = std::string::npos;
+    std::string newUri = "";
+    sf::Http::Response newRes;
+    
+    // Request redirected
+    if (status > 300 && status < 400 ) {
+
+        // Url of redirected webpage
+        loc = res.getField("Location");
+        if (loc.empty()) std::cerr << "Redirected, but no location header.\n\n";
+        
+        // Look for third "/" in url
+        while (count < 3 && (pos = loc.find("/", pos + 1)) != std::string::npos) {
+            count++;
+        }
+
+        if (count == 3) {
+
+            // Extract the uri
+            newUri = loc.substr(pos);
+
+            // Extract the host (this is a bit clunky)
+            host = loc.substr(7, pos - 7);
+
+            std::cout << "newUri: " << newUri << "\n";
+            std::cout << "host: " << host << "\n";
+
+            try {
+                
+                // Forming new response
+                http.setHost(host);
+                req.setUri(newUri);
+
+                // HTTP Response
+                newRes = http.sendRequest(req);
+            }
+            catch (const std::exception &e) {
+                
+                std::cerr << "Exception: " << e.what() << "\n" << 
+                "Redirect response failed:\n" <<
+                "uri: " << newUri << "\n" <<
+                "host: " << host << "\n\n";
+            }
+
+            return newRes.getBody();
+        }
+    }
+    else { std::cerr << "Server responded with " << status << "not properly redirected.\n\n"; }
+
+    return "Image not retrieved";
+}
+
+std::string retrieveData(const std::string &genre, const std::string &discogMethod) {
+
+    sf::Http http;
+    http.setHost("api.deezer.com");
+
+    // HTTP request
+    sf::Http::Request req;
 
     try {
         
@@ -69,23 +148,17 @@ std::string retrieveData(const std::string genre, const std::string discogMethod
     }
     catch (const std::exception &e) {
 
-        std::cerr << "exception: " << e.what() << "\n";
+        std::cerr << "Exception: " << e.what() << "\n" <<
+        "retrieveData failed.\n\n";
     }
+    
+    // HTTP Response
+    sf::Http::Response res = http.sendRequest(req);
 
-    try {
-        
-        // HTTP Response
-        sf::Http::Response res = http.sendRequest(req);
-
+    if (res.getStatus() == sf::Http::Response::Status::Ok)
         return res.getBody();
-
-    }
-    catch(const std::exception &e) {
-
-        std::cerr << "execption: " << e.what() << "\n";
-    }
-
-    return "null";
+    else 
+        return "Failed to retrieve data.";
 }
 
 void parseAlbumResponse(const std::string &body) {
@@ -103,8 +176,9 @@ void parseAlbumResponse(const std::string &body) {
             TopList::Album a;
 
             a.albumName = album["title"];
+            a.albumId = album["id"];
             a.artistName = album["artist"]["name"];
-            a.picture = album["artist"]["picture"];
+            a.cover = album["cover"];
 
             albums.push_back(a);
 
@@ -114,15 +188,17 @@ void parseAlbumResponse(const std::string &body) {
         for (const auto &album : albums) {
 
             std::cout << "album title: " << album.albumName << "\n";
+            std::cout << "album id: " << album.albumId << "\n";
             std::cout << "artist name: " << album.artistName << "\n";
-            std::cout << "picture: " << album.picture << "\n";
+            std::cout << "cover: " << album.cover << "\n";
             std::cout << "-------------------------------" << "\n";
 
         }
     }
     catch (json::parse_error &e) {
 
-        std::cerr << "parse error at : " << e.what() << "\n";
+        std::cerr << "Parse error at: " << e.what() << "\n" << 
+        "in parseAlbumResponse\n\n";
     }
 }
 
@@ -141,6 +217,7 @@ void parseTrackResponse(const std::string &body) {
             TopList::Track t;
 
             t.trackName = track["title"];
+            t.trackId = track["id"];
             t.artistName = track["artist"]["name"];
             t.picture = track["artist"]["picture"];
 
@@ -152,6 +229,7 @@ void parseTrackResponse(const std::string &body) {
         for (const auto &track : tracks) {
 
             std::cout << "track title: " << track.trackName << "\n";
+            std::cout << "track id: " << track.trackId << "\n";
             std::cout << "artist name: " << track.artistName << "\n";
             std::cout << "picture: " << track.picture << "\n";
             std::cout << "-------------------------------" << "\n";
@@ -160,7 +238,8 @@ void parseTrackResponse(const std::string &body) {
    }
     catch (json::parse_error &e) {
 
-        std::cerr << "parse error at : " << e.what() << "\n";
+        std::cerr << "Parse error at: " << e.what() << "\n" <<
+        "in parseTrackResponse\n\n";
     }
 }
 
@@ -208,8 +287,7 @@ void parseArtistResponse(const std::string &body) {
 
 int main() {
 
-    std::string res = "";
-
+/*
     for (const std::string &method : discogMethods) {
 
         for (const auto &[key, value] : genres) {
@@ -224,9 +302,43 @@ int main() {
             else if ( method == "tracks") {
                 parseTrackResponse(res);
             }
+
+            //res = retrieveImage(method, recordId);
         }
     }
-    //parseTrackResponse(res);
+*/
+    // Create main window
+	sf::RenderWindow window(sf::VideoMode({500, 500}), "image");
+	window.setFramerateLimit(60);
+
+    std::string res = "";   sf::Texture texture;
+
+    res = retrieveImage("artist/65574/image");
+
+     // Main loop
+	while (window.isOpen()) {
+
+		while (const std::optional event = window.pollEvent()) {
+			if (event->is<sf::Event::Closed>()) {
+				window.close();
+			}
+            // If escape pressed, exit window
+            if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+				if (keyPressed->code == sf::Keyboard::Key::Escape) {
+					window.close();
+				}
+			}	
+		}
+
+        if (!texture.loadFromMemory(res.data(), res.size())) {
+            std::cerr << "Can't load image" << "\n";
+        }
+
+        sf::Sprite sprite(texture);
+        window.draw(sprite);
+
+        window.display();
+    }
 
     return 0;
 }
