@@ -103,9 +103,6 @@ std::string retrieveImage(const std::string imageUrl) {
             // Extract the host (this is a bit clunky)
             host = loc.substr(7, pos - 7);
 
-            std::cout << "newUri: " << newUri << "\n";
-            std::cout << "host: " << host << "\n";
-
             try {
                 
                 // Forming new response
@@ -161,28 +158,46 @@ std::string retrieveData(const std::string &genre, const std::string &discogMeth
         return "Failed to retrieve data.";
 }
 
-void parseAlbumResponse(const std::string &body) {
+std::vector<TopList::Album> parseAlbumResponse(const std::string &body) {
 
+    std::vector<TopList::Album> albums;
+    
     try {
         
         json data = json::parse(body);
 
-        std::vector<TopList::Album> albums;
-
-        int count = 0;
+        int record = 0;
         for (const auto &album : data["data"]) {
-            if (count == 5) break;
+            
+            int count = 0;
+            size_t pos = std::string::npos;
+            
+            if (record == 5) break;
 
             TopList::Album a;
 
             a.albumName = album["title"];
             a.albumId = album["id"];
             a.artistName = album["artist"]["name"];
-            a.cover = album["cover"];
+            std::string cover = album["cover"];
 
+            // Look for third "/" in url
+            while (count < 3 && (pos = cover.find("/", pos + 1)) != std::string::npos) {
+                count++;
+            }
+
+            if (count == 3) {
+
+                // Extract the uri
+                a.cover = cover.substr(pos);
+
+            //a.cover = album["cover"];
+            
+            }
+            
             albums.push_back(a);
 
-            count++;
+            record++;
         }
 
         for (const auto &album : albums) {
@@ -200,30 +215,49 @@ void parseAlbumResponse(const std::string &body) {
         std::cerr << "Parse error at: " << e.what() << "\n" << 
         "in parseAlbumResponse\n\n";
     }
+
+    return albums;
 }
 
-void parseTrackResponse(const std::string &body) {
+std::vector<TopList::Track> parseTrackResponse(const std::string &body) {
 
+    std::vector<TopList::Track> tracks;
+    
     try {
         
         json data = json::parse(body);
 
-        std::vector<TopList::Track> tracks;
-
-        int count = 0;
+        int record = 0;
         for (const auto &track : data["data"]) {
-            if (count == 5) break;
+            
+            int count = 0;
+            size_t pos = std::string::npos;
+            
+            if (record == 5) break;
 
             TopList::Track t;
 
             t.trackName = track["title"];
             t.trackId = track["id"];
             t.artistName = track["artist"]["name"];
-            t.picture = track["artist"]["picture"];
+            std::string picture = track["artist"]["picture"];
+            // Look for third "/" in url
+            while (count < 3 && (pos = picture.find("/", pos + 1)) != std::string::npos) {
+                count++;
+            }
+
+            if (count == 3) {
+
+                // Extract the uri
+                t.picture = picture.substr(pos);
+
+            }
+            
+            //t.picture = track["artist"]["picture"];
 
             tracks.push_back(t);
 
-            count++;
+            record++;
         }
 
         for (const auto &track : tracks) {
@@ -241,6 +275,8 @@ void parseTrackResponse(const std::string &body) {
         std::cerr << "Parse error at: " << e.what() << "\n" <<
         "in parseTrackResponse\n\n";
     }
+
+    return tracks;
 }
 
 /*
@@ -287,6 +323,10 @@ void parseArtistResponse(const std::string &body) {
 
 int main() {
 
+    std::string res = "";   
+    std::vector<TopList::Track> tracks;
+    std::vector<TopList::Album> albums;
+    std::vector<std::string> images;
 /*
     for (const std::string &method : discogMethods) {
 
@@ -294,28 +334,59 @@ int main() {
 
             std::cout << "\n\n---- Retrieving top " << method << " for " << key << " ----" << "\n\n";
 
+            // Fetch info from Deezer  
             res = retrieveData(value, method);
 
             if (method == "albums") {
-                parseAlbumResponse(res);
+                
+                albums = parseAlbumResponse(res);
+
+                for (const TopList::Album &album : albums) {
+                
+                    images.push_back(retrieveImage(album.cover));
+                }
             }
             else if ( method == "tracks") {
-                parseTrackResponse(res);
+                
+                tracks = parseTrackResponse(res);
+                
+                for (const TopList::Track &track : tracks) {
+
+                    images.push_back(retrieveImage(track.picture));
+                }
             }
 
-            //res = retrieveImage(method, recordId);
         }
     }
 */
+   std::string method = "tracks";
+
+    for (const auto &[key, value] : genres) {
+
+        std::cout << "\n\n---- Retrieving top " << method << " for " << key << " ----" << "\n\n";
+
+        // Fetch info from Deezer  
+        res = retrieveData(value, method);
+
+        if ( method == "tracks") {
+            
+            tracks = parseTrackResponse(res);
+
+            for (const TopList::Track &track : tracks) {
+
+                images.push_back(retrieveImage(track.picture));
+            }
+        }
+
+    }
+
     // Create main window
-	sf::RenderWindow window(sf::VideoMode({500, 500}), "image");
+	sf::RenderWindow window(sf::VideoMode({600, 720}), "image");
 	window.setFramerateLimit(60);
 
-    std::string res = "";   sf::Texture texture;
+    sf::Texture texture;
 
-    res = retrieveImage("artist/65574/image");
-
-     // Main loop
+    // Main loop
 	while (window.isOpen()) {
 
 		while (const std::optional event = window.pollEvent()) {
@@ -330,15 +401,25 @@ int main() {
 			}	
 		}
 
-        if (!texture.loadFromMemory(res.data(), res.size())) {
-            std::cerr << "Can't load image" << "\n";
-        }
+        int idx = 0;
+        for (int row = 0; row < 5; row++) {
 
-        sf::Sprite sprite(texture);
-        window.draw(sprite);
+            for (int col = 0; col < 6; col++) {
+
+                if (!texture.loadFromMemory(images[idx].data(), images[idx].size())) {
+                    std::cerr << "Can't load image" << "\n";
+                }
+             
+                sf::Sprite sprite(texture);
+                sprite.setPosition({row * 120.f, col * 120.f});
+                window.draw(sprite);
+
+                idx++;
+            }
+        }
 
         window.display();
     }
-
+    
     return 0;
 }
